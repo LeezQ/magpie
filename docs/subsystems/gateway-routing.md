@@ -11,6 +11,11 @@ This page covers how a request is routed. Plugins that change requests and
 replies are in [Gateway middleware](gateway-middleware.md). Subscriptions
 served by a plugin are in [Provider and plugin ownership](provider-plugins.md).
 
+The dedicated StallionX client's balance-error normalization and bilingual
+recovery messages are documented in [StallionX client](stallionx-client.md).
+`forwardOnce` applies `provider.StallionXRefusal` before routing classifies the
+response; other providers and non-balance refusals retain their original status.
+
 WorkBuddy and CodeBuddy Code's `X-Conversation-ID` is a native session header
 in `sessionHeaders` (`sessionOf`, `nativeSessionOf`, `conversationID` in
 [`gateway.go`](../../internal/gateway/gateway.go)). It keeps their requests

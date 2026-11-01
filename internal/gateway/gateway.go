@@ -3204,7 +3204,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 			// the answer names who held it, as one asked would: a magpie
 			// using this one rests that model of it alone (remoteModelRest)
 			noteMember(hw, r, c.p, c.model)
-			writeError(hw, from, call.Status, msg)
+			var code any
+			if rested.BillingCode != "" {
+				code = rested.BillingCode
+			}
+			writeErrorSaid(hw, from, call.Status, msg, code, nil)
 		} else {
 			// a stream that fails before anything is said is let go at
 			// once (hw.stop), not read on until the vendor hangs up
@@ -5014,6 +5018,7 @@ func (s *Server) forwardOnce(ctx context.Context, p provider.Provider, to provid
 	// envelope: the 401 (or 429 …) it stands for, so the next key or
 	// member is asked and the agent told why (@xanahopper on X)
 	res = notAnAPIReply(clineUnwrapped(p, provider.ZhipuEnveloped(req, openCodeBareRefusal(req, res))), "")
+	res = provider.StallionXRefusal(p, res)
 	if p.Account != nil && p.Account.Agent == "codex" {
 		// a large request ChatGPT closed the connection on: asked again,
 		// nobody resting for it, and said what may help (#1628)
@@ -8642,6 +8647,15 @@ func writeErrorSaid(w http.ResponseWriter, proto provider.Protocol, status int, 
 		v = map[string]any{"error": map[string]any{"code": status, "message": msg, "status": st}}
 	default:
 		v = map[string]any{"error": map[string]any{"message": msg, "type": typ, "code": code, "param": param}}
+	}
+	if status == http.StatusPaymentRequired {
+		if display := provider.StallionXBillingDisplay(code); display != nil {
+			detail := v.(map[string]any)["error"].(map[string]any)
+			detail["displayMsg"] = display
+			if proto == provider.Anthropic {
+				detail["code"] = code
+			}
+		}
 	}
 	writeJSON(w, status, v)
 	return status

@@ -182,6 +182,25 @@ The client never asks a new user to configure API keys, provider URLs or model
 lists to finish login. External agent installation/selection remains a separate
 user decision; login does not rewrite every installed agent's files silently.
 
+Agent-visible balance refusals use `provider.stallionXError` through
+`Provider.Explain` (gateway) and `probe` (model tests). Only the StallionX preset's
+JSON 403 with the exact `Insufficient balance` or `Insufficient team balance`
+message is normalized by `provider.StallionXRefusal` to HTTP 402 with a namespaced billing
+error code before gateway routing and protocol translation. This prevents agents
+from treating an empty wallet as an invalid API key. It also gets a Chinese
+recovery instruction before the original diagnostic. Personal
+balance points to the user center; team balance points to the team owner, not
+the member's personal wallet. Both languages remain in the protocol message
+because external agents do not load desktop translations; this is not dynamic
+locale negotiation. `writeErrorSaid` adds the allowlisted `error.displayMsg`
+translations from `provider.StallionXBillingDisplay` for these namespaced codes:
+WorkBuddy carries them into its localized banner, overriding its misleading
+default 402 "login expired" title. No balance is changed and no recharge or payment is made.
+`Rest.BillingCode` preserves this allowlisted code through cached refusals and
+the existing rest file, so retries and client restarts keep the same recovery title.
+Other providers and other 403s (including key/member quota exhaustion)
+are not relabeled. Existing conversation errors are historical and are not rewritten.
+
 ### One source of account truth
 
 `GET /api/stallionx/user` (`User` in `internal/stallionx/user.go`) returns

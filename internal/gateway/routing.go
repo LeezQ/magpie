@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tidwall/gjson"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/routes"
@@ -674,6 +675,9 @@ type Rest struct {
 	// (GanHei37443 on X: three WorkBuddy accounts each "failed · back in
 	// 16s", and nothing on the row said why)
 	Error string `json:"error,omitempty"`
+	// BillingCode keeps StallionX's localized recovery title on a cached
+	// refusal, including after a restart. Only its allowlisted codes are kept.
+	BillingCode string `json:"billingCode,omitempty"`
 
 	// the subscription account resting, when it is one; agent "" and its
 	// provider.KeyAllowanceID for a key out of its own windows
@@ -1259,6 +1263,12 @@ func (s *Server) restAfterMarked(c candidate, status int, header http.Header, bo
 	if why == failCredit || why == failQuota {
 		// the vendor's words, for quotaHeld to give again
 		r.said = provider.APIError(body, http.StatusText(status))
+		if c.p.Preset == provider.StallionXPreset && status == http.StatusPaymentRequired {
+			code := gjson.GetBytes(body, "error.code").String()
+			if provider.StallionXBillingDisplay(code) != nil {
+				r.BillingCode = code
+			}
+		}
 	}
 	switch why {
 	case failCredit:

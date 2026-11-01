@@ -757,6 +757,7 @@ func probeOnce(ctx context.Context, p Provider, proto Protocol, url string, body
 		// Zhipu's Responses API refuses a key 200, in an envelope: the
 		// refusal it is, not a green check (@xanahopper on X)
 		res = ZhipuEnveloped(req, res)
+		res = StallionXRefusal(p, res)
 	}
 	r.Millis = time.Since(start).Milliseconds()
 	if err != nil {
@@ -789,7 +790,7 @@ func probeOnce(ctx context.Context, p Provider, proto Protocol, url string, body
 		return r
 	}
 	b, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
-	r.Error = APIError(b, res.Status)
+	r.Error = p.stallionXError(APIError(b, res.Status), res.StatusCode, b)
 	r.otherAPI = catalog.WrongEndpoint(res.StatusCode, b)
 	return r
 }

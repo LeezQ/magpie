@@ -309,6 +309,7 @@ func (p Provider) Retry(ctx context.Context, sent []byte, status int, body []byt
 // Explain is the error a refusal is passed on as: msg, with what the
 // user can do about it when the account knows.
 func (p Provider) Explain(msg string, status int, body []byte) string {
+	msg = p.stallionXError(msg, status, body)
 	if p.Account == nil || p.Account.explain == nil {
 		return msg
 	}
