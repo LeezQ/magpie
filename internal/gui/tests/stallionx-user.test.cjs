@@ -74,7 +74,11 @@ for (const engine of engines) for (const lang of languages) for (const width of 
     assert.equal(f.state, "signed_out");
     await page.goto(`${origin}/?view=usage`);
     await gate.waitFor();
-    assert.equal(await gate.getByRole("textbox", { name: await tr(page, "Email"), exact: true }).count(), 1, "deep links stay behind the same global login gate");
+    // the gate shows before the user state answers and draws its form after
+    // (stallionx-user.js): wait for the form, then count what it holds
+    const emailBox = gate.getByRole("textbox", { name: await tr(page, "Email"), exact: true });
+    await emailBox.first().waitFor();
+    assert.equal(await emailBox.count(), 1, "deep links stay behind the same global login gate");
     assert.equal(f.posts.filter(p => p.path.includes("/wallet/verify")).length, 0, "no wallet-only authentication endpoint");
     verify();
   });
