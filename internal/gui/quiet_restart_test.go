@@ -21,9 +21,9 @@ import (
 func TestRestartBySelfComesBackQuietly(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", home)
-	mark := filepath.Join(home, "magpie", quietRestartFile)
+	mark := filepath.Join(home, "stallionx", quietRestartFile)
 
-	exe := filepath.Join(t.TempDir(), "magpie")
+	exe := filepath.Join(t.TempDir(), "stallionx")
 	os.WriteFile(exe, []byte("old"), 0o755)
 	self, _ := os.Stat(exe)
 	os.WriteFile(exe, []byte("newer"), 0o755) // in already: install has nothing to swap

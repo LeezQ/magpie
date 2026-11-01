@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // Import links let a vendor or a relay hand its users a ready-made provider:
@@ -35,21 +37,28 @@ import (
 // A link never saves anything by itself: the app shows what it would add
 // and the user says yes.
 
-// Scheme is the URL scheme magpie registers with the system.
-const Scheme = "magpie"
+// Scheme is the URL scheme this app registers with the system: StallionX's
+// own (stallionx://), so it never takes magpie:// from an upstream magpie
+// installed beside it.
+const Scheme = brand.Scheme
+
+// upstreamScheme is magpie's. A magpie:// link a vendor hands out is still
+// read when pasted or passed in by hand (stallionx import 'magpie://…');
+// only the system's routing of clicked links is StallionX's alone.
+const upstreamScheme = "magpie"
 
 // ParseImport reads an import link into the provider it describes.
 func ParseImport(link string) (Provider, error) {
 	u, err := url.Parse(strings.TrimSpace(link))
-	if err != nil || !strings.EqualFold(u.Scheme, Scheme) {
-		return Provider{}, errors.New("not a magpie:// link")
+	if err != nil || !(strings.EqualFold(u.Scheme, Scheme) || strings.EqualFold(u.Scheme, upstreamScheme)) {
+		return Provider{}, errors.New("not a " + Scheme + ":// link")
 	}
 	action := u.Host
 	if action == "" { // magpie:import?… or magpie:///import?…
 		action = strings.Trim(u.Opaque+u.Path, "/")
 	}
 	if action != "import" {
-		return Provider{}, errorf("magpie://%s is not something magpie knows; links start magpie://import?", action)
+		return Provider{}, errorf("%s://%s is not something %s knows; links start %s://import?", Scheme, action, brand.Name, Scheme)
 	}
 	q := u.Query()
 	get := func(k string) string { return strings.TrimSpace(q.Get(k)) }

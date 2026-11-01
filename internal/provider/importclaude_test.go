@@ -26,7 +26,7 @@ func TestImportClaudeSettings(t *testing.T) {
 		t.Fatalf("relay: %+v", it)
 	}
 
-	os.WriteFile(settings, []byte(`{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:3425","ANTHROPIC_AUTH_TOKEN":"magpie"}}`), 0o600)
+	os.WriteFile(settings, []byte(`{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:3435","ANTHROPIC_AUTH_TOKEN":"magpie"}}`), 0o600)
 	os.MkdirAll(filepath.Dir(Path()), 0o700)
 	os.WriteFile(filepath.Join(filepath.Dir(Path()), "stash.json"), []byte(`{"claude.base_url":"https://api.relay.example.com","claude.auth_token":"sk-r"}`), 0o600)
 	if it := itemsOf(t, "claude-code")["settings"]; it.Skip != "" || it.Provider.Key != "sk-r" {

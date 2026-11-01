@@ -16,7 +16,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/yetone/magpie/internal/appdir"
@@ -109,12 +108,11 @@ func partnerCacheFile() string { return filepath.Join(appdir.Cache(), "partners.
 func partnersSource() string {
 	src := os.Getenv("MAGPIE_PARTNERS")
 	if src == "" {
-		if testing.Testing() {
-			// a test never asks the real site; one that wants a list
-			// names its own
-			return "off"
-		}
-		src = PartnersURL
+		// StallionX lists no partners, in tests or out: magpie's feed
+		// (PartnersURL) is upstream's sponsors, which would sit above
+		// StallionX's own service in the Add sheet. MAGPIE_PARTNERS can
+		// still name a feed (a test names its own).
+		return "off"
 	}
 	return src
 }

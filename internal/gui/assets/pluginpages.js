@@ -16,7 +16,9 @@
 // and its actions (magpie.actions, P6) are row menu items that open it:
 // plugin-runtime.md says the rest.
 (() => {
-  if (mode !== "window") return;
+  // Do not mount community pages, panels, replacements or row actions in
+  // the dedicated shell. This leaves their backend lifecycle untouched.
+  if (mode !== "window" || stxUI.enabled) return;
   // how long a page has to say hello before it is taken as broken
   const HELLO_MS = 10e3;
   // how long a page the reader left keeps its frame: one left longer is

@@ -32,7 +32,7 @@ func TestBlockedNamesTheFolderInTheWay(t *testing.T) {
 	if !Mine(cfg) {
 		t.Fatal("Mine = false for the user's own folder")
 	}
-	if Own(cfg) || !Own(filepath.Join(cfg, "magpie")) || !Own(filepath.Join(cfg, "magpie", "x")) {
+	if Own(cfg) || !Own(filepath.Join(cfg, "stallionx")) || !Own(filepath.Join(cfg, "stallionx", "x")) {
 		t.Fatal("Own: only magpie's own folder and what is in it")
 	}
 	os.Chmod(cfg, 0o755)

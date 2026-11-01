@@ -42,8 +42,8 @@ func TestRegisterScheme(t *testing.T) {
 				testenv.Program(t, filepath.Join(bin, name), script)
 			}
 			dir := filepath.Join(data, "applications")
-			path := filepath.Join(dir, "magpie.desktop")
-			const old = "[Desktop Entry]\nExec=/usr/bin/magpie %u\nMimeType=x-scheme-handler/magpie;\n"
+			path := filepath.Join(dir, "stallionx.desktop")
+			const old = "[Desktop Entry]\nExec=/usr/bin/magpie %u\nMimeType=x-scheme-handler/stallionx;\n"
 			if tc.existing {
 				if err := os.MkdirAll(dir, 0o755); err != nil {
 					t.Fatal(err)
@@ -76,7 +76,7 @@ func TestRegisterScheme(t *testing.T) {
 				t.Fatal(err)
 			}
 			got, err := os.ReadFile(path)
-			if err != nil || !strings.Contains(string(got), "Exec="+exe+" %u\n") || !strings.Contains(string(got), "MimeType=x-scheme-handler/magpie;\n") {
+			if err != nil || !strings.Contains(string(got), "Exec="+exe+" %u\n") || !strings.Contains(string(got), "MimeType=x-scheme-handler/stallionx;\n") {
 				t.Fatalf("desktop entry: %q, %v", got, err)
 			}
 			checkDesktopBinding(t, data, string(got))
@@ -84,7 +84,7 @@ func TestRegisterScheme(t *testing.T) {
 			if err := registerScheme(); err != nil {
 				t.Fatal(err)
 			}
-			want := "update-desktop-database\n" + dir + "\nxdg-mime\ndefault\nmagpie.desktop\nx-scheme-handler/magpie\n"
+			want := "update-desktop-database\n" + dir + "\nxdg-mime\ndefault\nstallionx.desktop\nx-scheme-handler/stallionx\n"
 			if got, err := os.ReadFile(calls); err != nil || string(got) != want {
 				t.Fatalf("registration calls: %q, want %q (%v)", got, want, err)
 			}
@@ -96,10 +96,10 @@ func TestRegisterScheme(t *testing.T) {
 // is installed, so neither the dock nor the app grid draws a gear (#2626).
 func checkDesktopBinding(t *testing.T, data, entry string) {
 	t.Helper()
-	if !strings.Contains(entry, "\nStartupWMClass="+programName+"\n") || !strings.Contains(entry, "\nIcon=magpie\n") {
+	if !strings.Contains(entry, "\nStartupWMClass="+programName+"\n") || !strings.Contains(entry, "\nIcon=stallionx\n") {
 		t.Fatalf("desktop entry doesn't bind the window %q and its icon: %q", programName, entry)
 	}
-	icon, err := os.ReadFile(filepath.Join(data, "icons", "hicolor", "256x256", "apps", "magpie.png"))
+	icon, err := os.ReadFile(filepath.Join(data, "icons", "hicolor", "256x256", "apps", "stallionx.png"))
 	if err != nil || !bytes.Equal(icon, desktopIcon) {
 		t.Fatalf("icon not installed: %d bytes, %v", len(icon), err)
 	}
@@ -130,9 +130,9 @@ func TestRegisterSchemeBindsAnOlderEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(data, "applications")
-	path := filepath.Join(dir, "magpie.desktop")
+	path := filepath.Join(dir, "stallionx.desktop")
 	older := "[Desktop Entry]\nType=Application\nName=magpie\nComment=Every agent's model. One place.\nExec=" + exe +
-		" %u\nIcon=magpie\nCategories=Development;Utility;\nMimeType=x-scheme-handler/magpie;\nTerminal=false\n"
+		" %u\nIcon=stallionx\nCategories=Development;Utility;\nMimeType=x-scheme-handler/stallionx;\nTerminal=false\n"
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -154,15 +154,30 @@ func TestRegisterSchemeBindsAnOlderEntry(t *testing.T) {
 	}
 }
 
+// A development binary named magpie must not move upstream's WebKit data.
+func TestForkWebDataLeavesUpstream(t *testing.T) {
+	data := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", data)
+	for _, name := range []string{"magpie", "magpie-linux-amd64", "gui.test"} {
+		p := filepath.Join(data, name, "localstorage")
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		keepWebDataFrom(name)
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("moved another application's data %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(data, "stallionx")); !os.IsNotExist(err) {
+		t.Fatalf("adopted another application's data: %v", err)
+	}
+}
+
 // WebKitGTK names its data folder after the program; a release run as
 // downloaded kept the pages' localStorage under its executable's name. It
 // moves to programName's folder, never over one that is there already.
 func TestKeepWebData(t *testing.T) {
-	exe, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	old := filepath.Base(exe)
+	old := "stallionx-linux-amd64"
 	for _, tc := range []struct {
 		name          string
 		webkit, there bool
@@ -191,7 +206,7 @@ func TestKeepWebData(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			keepWebData()
+			keepWebDataFrom(old)
 			b, err := os.ReadFile(filepath.Join(to, sub, "file__0.localstorage"))
 			if moved := err == nil && string(b) == "favourites"; moved != tc.moved {
 				t.Fatalf("moved to %s: %v, want %v (%v)", to, moved, tc.moved, err)

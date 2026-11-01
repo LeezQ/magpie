@@ -1,125 +1,227 @@
-name: Release
+name: StallionX Release
 
-# Pushing a v* tag hands off to yetone/magpie-releases, which builds, signs,
-# notarises and publishes magpie there; that repo is where people download
-# from, and the signing secrets live only there. Once its release has every
-# asset, the same release is copied here, so this repo's Releases page has
-# the installers too (PapainTea on X). Self-update, install.sh and the site
-# still read magpie-releases only.
-
+# Deliberate opt-in only: upstream v* tags never publish or dispatch elsewhere.
+# Create stallionx-vX.Y.Z on main first, then run this workflow from main.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 0.1.0 — no v prefix; the v tag must exist)'
+        description: 'StallionX version X.Y.Z (existing stallionx-vX.Y.Z tag)'
         required: true
         type: string
+      sign_macos:
+        description: 'Sign and notarize macOS (requires Apple secrets)'
+        default: false
+        type: boolean
+      create_draft:
+        description: 'Create a draft Release in THIS repository; false uploads Actions artifacts only'
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+concurrency:
+  group: stallionx-release-${{ inputs.version }}
+  cancel-in-progress: false
 
 jobs:
-  trigger-release:
-    runs-on: ubuntu-latest
+  source:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      ref: ${{ steps.version.outputs.ref }}
-
+      sha: ${{ steps.source.outputs.sha }}
+      tag: ${{ steps.source.outputs.tag }}
+      version: ${{ steps.source.outputs.version }}
     steps:
-      - name: Get version
-        id: version
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            REF="$GITHUB_REF_NAME"
-            VERSION="${REF#v}"
-          else
-            VERSION="$INPUT_VERSION"
-            REF="v$INPUT_VERSION"
-          fi
-          # a newline or quote would add outputs or break the JSON below
-          [[ "$VERSION" =~ ^[0-9][0-9A-Za-z.+-]*$ ]] || { echo "bad version: $VERSION" >&2; exit 1; }
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "ref=$REF" >> $GITHUB_OUTPUT
-          echo "Triggering release for version: $VERSION (ref: $REF)"
-
-      - name: Trigger release workflow in magpie-releases
-        uses: peter-evans/repository-dispatch@v3
+      - uses: actions/checkout@v4
         with:
-          # PAT with contents write on yetone/magpie-releases.
-          token: ${{ secrets.RELEASES_REPO_TOKEN }}
-          repository: yetone/magpie-releases
-          event-type: release
-          client-payload: '{"ref": "${{ steps.version.outputs.ref }}", "version": "${{ steps.version.outputs.version }}"}'
-
-      - name: Output status
-        run: echo "Watch the build at https://github.com/yetone/magpie-releases/actions"
-
-  mirror-release:
-    needs: trigger-release
-    runs-on: ubuntu-latest
-    # magpie-releases' macOS jobs can wait an hour or more for a hosted
-    # runner when several tags queue: v0.1.2262 published 62 minutes after
-    # its tag, two minutes after a 60-minute wait here gave up, and it was
-    # never copied here (#4488)
-    timeout-minutes: 330
-    permissions:
-      contents: write
-      issues: write # to say a release went out without Chinese notes
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      REF: ${{ needs.trigger-release.outputs.ref }}
-      ASSETS: 16 # what every release carries; a smaller count is still uploading
-    steps:
-      - name: Wait for magpie-releases to publish every asset
-        run: |
-          for i in $(seq 1 600); do
-            n=$(gh release view "$REF" -R yetone/magpie-releases --json assets -q '.assets | length' 2>/dev/null || echo 0)
-            echo "attempt $i: $n of $ASSETS assets"
-            [ "$n" -ge "$ASSETS" ] && exit 0
-            sleep 30
-          done
-          echo "magpie-releases never published $REF with $ASSETS assets" >&2
-          exit 1
-
-      - name: Copy the release here
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate immutable release source
+        id: source
+        env:
+          VERSION: ${{ inputs.version }}
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-          gh release download "$REF" -R yetone/magpie-releases -D dist
-          gh release view "$REF" -R yetone/magpie-releases --json body -q .body > notes.md
-          printf '\n\n---\nThe same release, and the feed magpie updates from: https://github.com/yetone/magpie-releases/releases/tag/%s\n' "$REF" >> notes.md
-          if gh release view "$REF" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$REF" -R "$GITHUB_REPOSITORY" --notes-file notes.md
-            gh release upload "$REF" dist/* -R "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$REF" dist/* -R "$GITHUB_REPOSITORY" --verify-tag --title "magpie $REF" --notes-file notes.md
-          fi
-          n=$(gh release view "$REF" -R "$GITHUB_REPOSITORY" --json assets -q '.assets | length')
-          echo "$REF has $n assets here"
-          [ "$n" -ge "$ASSETS" ]
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
+          tag="stallionx-v$VERSION"
+          sha=$(git rev-parse --verify "refs/tags/$tag^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # The Chinese notes are written by magpie-releases' DeepSeek call, and
-      # when that call fails the release goes out in English alone: a spent
-      # balance did so for v0.1.1233 to v0.1.1242, and Chinese apps showed
-      # English for a day until a user said so (#2122). Its warning is in a
-      # log nobody reads, so a release without them is said here, on one
-      # open issue, where the notes get added by hand.
-      - name: Say when the notes have no Chinese
-        env:
-          GH_REPO: ${{ github.repository }}
+  verify:
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check packaging and full Go suite at release SHA
+        shell: bash
         run: |
-          set -uo pipefail
-          if grep -qF '<!-- lang:zh -->' notes.md; then
-            echo "$REF has Chinese notes"
-            exit 0
-          fi
-          title="Release notes without Chinese"
-          msg="$REF went out with English notes alone: magpie-releases' release run got no Chinese from DeepSeek. Its reason is the \`DeepSeek wrote no Chinese notes\` warning in that run's Generate changelog step (https://github.com/yetone/magpie-releases/actions). Until the Chinese is added below a \`<!-- lang:zh -->\` marker, in the release on yetone/magpie-releases and here, apps set to Chinese show its notes in English (#2122)."
-          n=$(gh issue list --state open --search "\"$title\" in:title" --json number,title -q ".[] | select(.title == \"$title\") | .number" | head -1) || n=""
-          if [ -n "$n" ]; then
-            gh issue comment "$n" --body "$msg" || echo "::warning::could not comment on #$n: $msg"
-          else
-            gh issue create --title "$title" --body "$msg" || echo "::warning::could not file an issue: $msg"
-          fi
+          set -euo pipefail
+          test -z "$(gofmt -l $(git ls-files '*.go'))"
+          python3 -I build/release-assets.py --test
+          bash -n build/release-macos.sh build/release-windows.sh
+          go vet -tags nogui ./...
+          go test -tags nogui -timeout 45m ./... 2>&1 | tee go-release-tests.log
+          go test -race -tags nogui -timeout 45m ./internal/stallionx
+      - name: Install pinned browser test runtime
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/stx-browsers" --no-audit --no-fund playwright@1.58.2
+          "$RUNNER_TEMP/stx-browsers/node_modules/.bin/playwright" install --with-deps chromium webkit
+      - name: Full GUI suite in both engines
+        shell: bash
+        env:
+          NODE_PATH: ${{ runner.temp }}/stx-browsers/node_modules
+        run: |
+          set -o pipefail
+          node --test --test-concurrency=2 internal/gui/tests/*.test.cjs 2>&1 | tee gui-release-tests.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stallionx-verification-${{ needs.source.outputs.version }}
+          path: '*-release-tests.log'
+          retention-days: 14
+
+  macos:
+    needs: [source, verify]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    environment: stallionx-release
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Native account tests
+        run: go test -race -timeout 10m ./internal/stallionx
+      - name: Package Mac app
+        env:
+          VERSION: ${{ needs.source.outputs.version }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+          SIGN_MACOS: ${{ inputs.sign_macos }}
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          test "$(go env GOARCH)" = "$EXPECTED_ARCH"
+          bash build/release-macos.sh "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stallionx-package-macos-${{ matrix.arch }}
+          path: |
+            dist/StallionX-*.zip
+            dist/StallionX-*.dmg
+          if-no-files-found: error
+
+  windows:
+    needs: [source, verify]
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Do not depend on incidental Python/make versions in the runner image.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install GNU make
+        shell: powershell
+        run: choco install make --yes --no-progress
+      - name: Native Windows checks
+        shell: bash
+        run: |
+          go test -run '^$' ./...
+          go test -timeout 10m ./internal/stallionx
+      - name: Package Windows portable apps
+        shell: bash
+        env:
+          VERSION: ${{ needs.source.outputs.version }}
+        run: bash build/release-windows.sh "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stallionx-package-windows
+          path: dist/StallionX-*-windows-*-unsigned.zip
+          if-no-files-found: error
+
+  draft:
+    needs: [source, macos, windows]
+    runs-on: ubuntu-24.04
+    environment: stallionx-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stallionx-package-*
+          path: release-assets
+          merge-multiple: true
+      - name: Verify complete assets and generate hashes
+        env:
+          VERSION: ${{ needs.source.outputs.version }}
+          SIGN_MACOS: ${{ inputs.sign_macos }}
+        run: python3 -I build/release-assets.py release-assets "$VERSION" "$SIGN_MACOS"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stallionx-complete-${{ needs.source.outputs.version }}
+          path: release-assets/*
+          if-no-files-found: error
+      - name: Create draft only, never replace an existing release
+        if: inputs.create_draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.source.outputs.tag }}
+          VERSION: ${{ needs.source.outputs.version }}
+          SHA: ${{ needs.source.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Resolve the remote tag with authenticated GitHub API access, including
+          # private repositories: checkout intentionally leaves no Git credentials.
+          test "$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)" = "$SHA"
+          printf 'StallionX %s\n\nSource: %s\n\n' "$VERSION" "$SHA" > notes.md
+          printf '安装前请选择对应系统和架构。unsigned 文件未签名，仅供内测。\nWindows 需要 Microsoft Edge WebView2 Runtime。\n\n' >> notes.md
+          printf 'Choose your OS and architecture. Files marked unsigned are unsigned test builds. Windows requires Microsoft Edge WebView2 Runtime.\n\n' >> notes.md
+          printf 'Mac 签名状态见文件名；正式公开前需完成真机验证和版本说明。自动更新尚未接入，请手动下载更新。\nMIT and third-party notices are included. Verify downloads against SHA256SUMS.\n' >> notes.md
+          gh release create "$TAG" release-assets/* --verify-tag --draft --latest=false \
+            --title "StallionX $VERSION" --notes-file notes.md

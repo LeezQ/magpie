@@ -34,10 +34,10 @@ func TestConfigNeverRelative(t *testing.T) {
 	t.Setenv(homeVar(), home)
 	t.Setenv("XDG_CONFIG_HOME", "relative/cfg")
 	t.Setenv("XDG_CACHE_HOME", "relative/cache")
-	if got, want := Config(), filepath.Join(home, ".config", "magpie"); got != want {
+	if got, want := Config(), filepath.Join(home, ".config", "stallionx"); got != want {
 		t.Errorf("Config() = %q, want %q", got, want)
 	}
-	if got, want := Cache(), filepath.Join(home, ".cache", "magpie"); got != want {
+	if got, want := Cache(), filepath.Join(home, ".cache", "stallionx"); got != want {
 		t.Errorf("Cache() = %q, want %q", got, want)
 	}
 	t.Setenv(homeVar(), "")

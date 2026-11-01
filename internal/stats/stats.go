@@ -24,7 +24,6 @@ import (
 
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
 )
 
 // Key is the Magpie project's key on PostHog: it can send events there and
@@ -42,6 +41,10 @@ func Host() string {
 
 // Off reports whether the user said not to send it.
 func Off() bool {
+	// Guard Send as well as Run; direct callers must not reach upstream.
+	if os.Getenv("MAGPIE_STATS_HOST") == "" {
+		return true
+	}
 	for _, k := range []string{"DO_NOT_TRACK", "MAGPIE_NO_STATS"} {
 		if v := os.Getenv(k); v != "" && v != "0" && v != "false" {
 			return true
@@ -51,10 +54,15 @@ func Off() bool {
 }
 
 // Run sends the day's event while magpie runs, as what ("app", "serve"): at
-// start, and then whenever a new day (UTC) has begun. Only releases send
-// it, unless MAGPIE_STATS_HOST is set.
+// start, and then whenever a new day (UTC) has begun.
+//
+// StallionX sends nothing by default: Key is upstream magpie's PostHog
+// project, and a fork's installs counted there would be the wrong
+// project's numbers and send StallionX users' data to a third party. Only
+// MAGPIE_STATS_HOST, pointing at a collector of StallionX's own, turns it
+// on. version is kept for the event itself (Send).
 func Run(version, what string) {
-	if !update.Released(version) && os.Getenv("MAGPIE_STATS_HOST") == "" {
+	if os.Getenv("MAGPIE_STATS_HOST") == "" {
 		return
 	}
 	for {

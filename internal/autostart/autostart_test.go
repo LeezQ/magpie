@@ -2,10 +2,48 @@ package autostart
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 )
+
+// Startup writes and removal must coexist with upstream's login record.
+// Windows' registry value is checked separately without accessing the hive.
+func TestForkAutostartLeavesUpstream(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the Run key is the real user's")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	want, old := "stallionx.desktop", "magpie.desktop"
+	if runtime.GOOS == "darwin" {
+		want, old = "com.stallionx.client.plist", "com.yetone.magpie.plist"
+	} else if runtime.GOOS == "android" {
+		want, old = "stallionx", "magpie"
+	}
+	if filepath.Base(record()) != want {
+		t.Fatalf("fork startup record is %q, want %q", record(), want)
+	}
+	upstream := filepath.Join(filepath.Dir(record()), old)
+	if err := os.MkdirAll(filepath.Dir(upstream), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(upstream, []byte("upstream login"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := enable("/opt/stallionx"); err != nil {
+		t.Fatal(err)
+	}
+	if err := disable(); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(upstream); err != nil || string(b) != "upstream login" {
+		t.Fatalf("upstream login changed: %q, %v", b, err)
+	}
+}
 
 // On, the system's record names this program and the tray; off, it's gone,
 // and turning it off again is no error.

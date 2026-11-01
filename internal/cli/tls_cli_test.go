@@ -115,10 +115,10 @@ func TestDaemonReinstallKeepsTLS(t *testing.T) {
 	var file string
 	switch runtime.GOOS {
 	case "darwin":
-		file = filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.yetone.magpie.serve.plist")
+		file = filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.stallionx.client.serve.plist")
 	case "linux":
 		t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "config"))
-		file = filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "magpie.service")
+		file = filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "stallionx.service")
 	default:
 		t.Skip("no service on " + runtime.GOOS)
 	}

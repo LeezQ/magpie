@@ -13,6 +13,9 @@ env:
 
 jobs:
   build:
+    # Preserve upstream automation without publishing magpie-branded images
+    # when StallionX source is pushed to its independent repository.
+    if: github.repository == 'yetone/magpie'
     name: build (${{ matrix.platform }})
     strategy:
       fail-fast: false

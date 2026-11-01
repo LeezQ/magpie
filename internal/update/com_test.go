@@ -32,14 +32,14 @@ func TestWriteCom(t *testing.T) {
 	}
 	launcher := []byte("MZ launcher v1")
 	p, err := writeCom(launcher, exe)
-	if err != nil || p != filepath.Join(dir, "magpie.com") {
+	if err != nil || p != filepath.Join(dir, "stallionx.com") {
 		t.Fatalf("writeCom: %q, %v", p, err)
 	}
 	b, _ := os.ReadFile(p)
 	if !bytes.HasPrefix(b, launcher) || comTarget(b) != "magpie-windows-amd64.exe" {
 		t.Fatalf("magpie.com: %q", b)
 	}
-	if !comRuns(p, exe) || comRuns(p, filepath.Join(dir, "magpie.exe")) {
+	if !comRuns(p, exe) || comRuns(p, filepath.Join(dir, "stallionx.exe")) {
 		t.Fatal("magpie.com not read as running this app alone")
 	}
 	st1, _ := os.Stat(p)
@@ -74,13 +74,13 @@ func TestComOwner(t *testing.T) {
 	if !comOwner(dl) {
 		t.Fatal("a lone download doesn't own magpie.com")
 	}
-	if err := os.WriteFile(filepath.Join(dir, "magpie.exe"), []byte("MZ"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "stallionx.exe"), []byte("MZ"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if comOwner(dl) {
 		t.Fatal("a copy beside magpie.exe takes `magpie` from it")
 	}
-	if !comOwner(filepath.Join(dir, "Magpie.exe")) {
+	if !comOwner(filepath.Join(dir, "StallionX.exe")) {
 		t.Fatal("magpie.exe doesn't own its magpie.com")
 	}
 }
@@ -97,7 +97,7 @@ func TestEnsureCompanion(t *testing.T) {
 
 	comLauncher = nil
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "magpie.exe")
+	exe := filepath.Join(dir, "stallionx.exe")
 	t.Setenv("PATH", dir)
 	if err := EnsureCompanion(exe); err != nil || exists(filepath.Join(dir, comName)) {
 		t.Fatalf("a build with no launcher wrote magpie.com: %v", err)
@@ -106,7 +106,7 @@ func TestEnsureCompanion(t *testing.T) {
 	comLauncher = []byte("MZ launcher")
 	off := t.TempDir()
 	t.Setenv("PATH", "/x"+sep+dir+string(filepath.Separator))
-	if err := EnsureCompanion(filepath.Join(off, "magpie.exe")); err != nil || exists(filepath.Join(off, comName)) {
+	if err := EnsureCompanion(filepath.Join(off, "stallionx.exe")); err != nil || exists(filepath.Join(off, comName)) {
 		t.Fatalf("magpie.com written off PATH: %v", err)
 	}
 	if err := EnsureCompanion(exe); err != nil || !comRuns(filepath.Join(dir, comName), exe) {
@@ -131,12 +131,12 @@ func TestFindCLIPrefersCom(t *testing.T) {
 		t.Skip("PATHEXT is Windows'")
 	}
 	dir := t.TempDir()
-	for _, n := range []string{"magpie.exe", "magpie.com"} {
+	for _, n := range []string{"stallionx.exe", "stallionx.com"} {
 		if err := os.WriteFile(filepath.Join(dir, n), []byte("MZ"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if got := findCLI([]string{dir}); !strings.EqualFold(got, filepath.Join(dir, "magpie.com")) {
+	if got := findCLI([]string{dir}); !strings.EqualFold(got, filepath.Join(dir, "stallionx.com")) {
 		t.Fatalf("findCLI: %q", got)
 	}
 }

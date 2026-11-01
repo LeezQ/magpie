@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/edit"
 )
 
@@ -18,7 +19,7 @@ func record() string {
 		home, _ := os.UserHomeDir()
 		dir = filepath.Join(home, ".config")
 	}
-	return filepath.Join(dir, "autostart", "magpie.desktop")
+	return filepath.Join(dir, "autostart", brand.Slug+".desktop")
 }
 
 // the two keys a desktop entry needs before the desktop starts it at login:
@@ -44,7 +45,7 @@ func enable(exe string) error {
 	}
 	// the Exec key's quoting: in double quotes, \ " ` $ escaped
 	q := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "`", "\\`", `$`, `\$`).Replace(exe)
-	body := "[Desktop Entry]\nType=Application\nName=magpie\nComment=one place to pick every agent's model\n" +
+	body := "[Desktop Entry]\nType=Application\nName=" + brand.Name + "\nComment=one place to pick every agent's model\n" +
 		"Exec=\"" + q + "\" " + Arg + "\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
 	return edit.WriteAtomic(p, []byte(body))
 }

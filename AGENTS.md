@@ -7,6 +7,10 @@ Before changing a documented subsystem, read its
 When preparing or reviewing a PR, follow the same page's documentation update,
 semantic change description, and review rules.
 
+## StallionX 专用客户端：只隐藏，不删功能
+
+当前产品用不到的功能（包括插件、其他供应商和高级设置）只在前端隐藏入口、页面和相关控件；不要删除实现代码，不要停用后端能力，也不要清理或改写用户已有配置。旧链接和设置搜索同样遵守前端可见性规则。除非用户另行明确要求，不得把“隐藏”扩大成删除、卸载、禁用或迁移。
+
 ## Code standards
 
 Write and review changes against the [code standards](docs/code-standards.md).

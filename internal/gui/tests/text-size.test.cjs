@@ -6,7 +6,7 @@
 // page. The zoom itself is the webview's (Go), so here it is as a browser
 // zoomed: the window's points over the zoom in CSS pixels, deviceScaleFactor
 // the zoom — and at 150% nothing in any view runs off to the side, the Mac
-// header still level with the traffic lights. English and Chinese; no
+// header still level with the traffic lights. All five languages; no
 // backend, the API is faked here. ARTIFACT_DIR gets screenshots at 100% and
 // 150%, light and dark.
 const assert = require("node:assert/strict");
@@ -129,7 +129,31 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       return page;
     };
 
-    for (const [lang, name, toast] of [["en", "Text size", "Text size 125%"], ["zh", "文字大小", "文字大小 125%"]]) {
+    for (const [lang, name, toast] of [
+      ["en", "Text size", "Text size 125%"], ["zh", "文字大小", "文字大小 125%"],
+      ["zh-TW", "文字大小", "文字大小 125%"], ["ja", "文字サイズ", "文字サイズ 125%"],
+      ["de", "Textgröße", "Textgröße 125 %"],
+    ]) {
+      await t.test(lang + ": the native 125% boot value is shown without rewriting it", async () => {
+        const posts = [], page = await open(lang, "light", 125, posts, { width: 720, height: 512, zoom: 1.25, url: "/?view=settings" });
+        const selected = page.locator("#textSizeSegs .opt.on");
+        await selected.waitFor();
+        assert.equal(await zoomVar(page), "1.25");
+        assert.equal((await selected.textContent()).trim(), "125%", "the server's default is the selected existing scale");
+        assert.deepEqual(posts, [], "boot does not save over a user's preferences");
+        assert.deepEqual(await overflow(page), [], "the original settings layout fits at 125%");
+        const original = await page.locator("#themeSegs .opt").first().evaluate(node => {
+          const s = getComputedStyle(node); return { fontSize: s.fontSize, radius: s.borderRadius, height: s.height };
+        });
+        assert.deepEqual(original, { fontSize: "12px", radius: "5px", height: "22px" }, "scaling keeps original CSS component sizes; the native webview supplies zoom");
+        await page.reload(); await selected.waitFor();
+        assert.equal(await zoomVar(page), "1.25");
+        assert.equal((await selected.textContent()).trim(), "125%");
+        assert.deepEqual(posts, []);
+        assert.deepEqual(page.errors, []);
+        await page.context().close();
+      });
+
       await t.test(lang + ": picked, kept, and stepped with the keys", async () => {
         const posts = [];
         const page = await open(lang, "light", 100, posts);

@@ -8,9 +8,10 @@ import (
 	"golang.org/x/sys/windows/registry"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 )
 
-const schemeKey = `Software\Classes\magpie`
+const schemeKey = `Software\Classes\` + brand.Scheme
 
 // unregisterScheme takes out the magpie:// handler the app registered
 // while it opens exe, or an exe that is gone.

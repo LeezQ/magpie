@@ -2654,3 +2654,55 @@ hasn't.
 ```sh
 node --test internal/gui/tests/nav-timeout.test.cjs
 ```
+
+## StallionX commercial user module
+
+`stallionx-user.test.cjs` drives the mandatory full-page login gate, visible
+Send code and resend cooldown, rejected code, automatic setup, shared profile,
+session recovery and two-click sign-out. Setup failure keeps the account signed
+in and permits user-center funding without unlocking the workspace. Expiry and
+temporary service failure have different recovery paths.
+
+`stallionx-wallet.test.cjs` covers the normal user-center page, payment orders,
+redemption, request billing, session expiry and non-JSON failures. There is no
+second wallet login. `stallionx-account.test.cjs` checks the compact Providers
+account summary and the retained provider editor/shell behavior.
+
+These use real assets and intercepted local fixtures in Chromium and WebKit,
+desktop and 390px, and all five languages. No email is sent and no production
+account, payment or agent config is used.
+
+`stallionx-style.test.cjs` compares the new login/user-center controls with
+actual Settings lists, theme segments and Providers editor inputs/buttons.
+It checks both engines, light/dark themes and desktop/mobile layouts, including
+focus rings, original mobile touch heights and horizontal overflow. Set
+`ARTIFACT_DIR` to capture each reference page and the account surfaces.
+
+`stallionx-billing-table.test.cjs` checks request and API-key tables in both
+engines and five languages, at desktop/mobile widths, with a wide sidebar and
+simulated 125% native zoom. It verifies header/cell alignment, table-local
+scrolling, accessible details, raw amounts, token totals, unknown values and
+empty headers. `stallionx-billing-layout.test.cjs` separately checks filter
+alignment and pagination grouping. These are offline fixtures, not live
+payment acceptance or native OS zoom tests.
+
+```sh
+node --test internal/gui/tests/stallionx-{user,account,wallet}.test.cjs
+node --test internal/gui/tests/stallionx-style.test.cjs
+node --test internal/gui/tests/stallionx-billing-{table,layout}.test.cjs
+```
+
+The real development entry is `make dev`; see
+[StallionX client isolation](../../../docs/subsystems/stallionx-client.md).
+
+## StallionX dedicated shell
+
+`stallionx-account.test.cjs` enables the production boot visibility flag and
+checks the dedicated navigation allow-list, hidden saved providers, hidden
+Add controls, route fallbacks and Settings search, plus the saved StallionX
+editor’s model list and explicit key reveal (including keyList accounts).
+Login and sign-out coverage lives in `stallionx-user.test.cjs`; the provider
+summary links to that same account and does not render another login form.
+`plugin-page.test.cjs` leaves that flag absent to verify the retained general
+community UI implementation still works. `TestStallionXShellBoot` verifies
+the flag is available before first paint without changing plugin state.

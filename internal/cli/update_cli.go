@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/update"
@@ -238,7 +239,7 @@ func updateCmd(args []string) error {
 			// The copy won't follow the app; the fix is the link install.sh
 			// makes. `magpie update` run from the copy can't do it (it
 			// replaces the copy with another copy), so name the real step.
-			bin := filepath.Join(app, "Contents", "MacOS", "magpie")
+			bin := filepath.Join(app, "Contents", "MacOS", brand.Slug)
 			fmt.Println(muted.Render("  the `magpie` command at " + tilde(stale) + " is a copy behind this app; re-run the installer, or link it: ln -sf " + tilde(bin) + " " + tilde(stale)))
 		}
 		return nil

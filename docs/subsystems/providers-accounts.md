@@ -1,5 +1,7 @@
 # Providers and accounts
 
+> StallionX fork: see [client identity, account flow and development isolation](stallionx-client.md) for this build’s differences from upstream.
+
 The gateway can send a request to three kinds of upstream:
 
 - A **provider** in `providers.json`: an endpoint with one or more API keys. Google Vertex AI's has no key: it is signed with the user's Google credentials.

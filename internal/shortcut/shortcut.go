@@ -18,10 +18,11 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // Name is what the shortcut is called, and what Windows search finds.
-const Name = "Magpie"
+const Name = brand.Name
 
 // StateName is the file in magpie's folder recording that the shortcut was
 // made, and for which exe.

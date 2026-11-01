@@ -2,10 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key><string>magpie</string>
-	<key>CFBundleDisplayName</key><string>magpie</string>
-	<key>CFBundleIdentifier</key><string>com.yetone.magpie</string>
-	<key>CFBundleExecutable</key><string>magpie</string>
+	<key>CFBundleName</key><string>StallionX</string>
+	<key>CFBundleDisplayName</key><string>StallionX</string>
+	<key>CFBundleIdentifier</key><string>com.stallionx.client</string>
+	<key>CFBundleExecutable</key><string>stallionx</string>
 	<key>CFBundleIconFile</key><string>magpie</string>
 	<key>CFBundleIconName</key><string>AppIcon</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
@@ -17,10 +17,10 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
-			<key>CFBundleURLName</key><string>com.yetone.magpie.import</string>
-			<key>CFBundleURLSchemes</key><array><string>magpie</string></array>
+			<key>CFBundleURLName</key><string>com.stallionx.client.import</string>
+			<key>CFBundleURLSchemes</key><array><string>stallionx</string></array>
 		</dict>
 	</array>
-	<key>NSHumanReadableCopyright</key><string>yetone</string>
+	<key>NSHumanReadableCopyright</key><string>© 2026 StallionX · MIT · based on magpie © yetone</string>
 </dict>
 </plist>

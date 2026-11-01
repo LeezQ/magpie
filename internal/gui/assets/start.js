@@ -1,3 +1,8 @@
+// Hidden community UI is not downloaded by the dedicated client. Keep its
+// implementation intact and load it before routing in the general shell, so
+// replacements and saved plugin-page links still register before startup.
+(async () => {
+  if (!stxUI.enabled) await import("/pluginpages.js");
 // The window's start, loaded last: app.js, the plugins' pages and the
 // scripts after app.js are all there, so the first page shown has its
 // code (the Usage page's is a plugin's, run after app.js).
@@ -15,7 +20,7 @@ function keptView() {
   if (asked === "agents" || OPEN_VIEWS.includes(asked)) return asked;
   let v = "";
   try { v = localStorage.getItem("magpie.lastView") || ""; } catch { /* none kept */ }
-  return OPEN_VIEWS.includes(v) ? v : ""; // one gateway mode leaves out, show() makes Providers
+  return OPEN_VIEWS.includes(v) ? v : (stxUI.enabled ? "providers" : ""); // one gateway mode leaves out, show() makes Providers
 }
 const firstView = mode === "window" ? keptView() : "";
 // from the tray panel's More in Plugins (q): Discover, once show() picked the tab (#3579)
@@ -24,3 +29,5 @@ else if (mode === "window" && !gatewayMode && !sideNav()) slide($("#nav"), "nav"
 // in gateway mode the first page is Providers, Agents' tab gone
 if (gatewayMode) setGatewayMode(true);
 load();
+
+})().catch(statusErr);

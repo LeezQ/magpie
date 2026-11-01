@@ -4,6 +4,33 @@
 // works. {name} slots are filled by t(str, vars).
 const I18N = {
   zh: {
+    // StallionX: the account card on the Providers page (stallionx.js)
+    "StallionX account": "StallionX 账号",
+    "Sign in to StallionX": "登录 StallionX",
+    "Sign in with your email to use StallionX's models in every agent. An address that isn't registered yet gets an account as it signs in.": "用邮箱登录，所有 Agent 都能用上 StallionX 的模型。还没注册的邮箱会在登录时自动注册。",
+    "Email": "邮箱",
+    "Send code": "发送验证码",
+    "Sending…": "正在发送…",
+    "Code sent to {email}. Check your spam folder if it isn't there.": "验证码已发送到 {email}，没收到请看看垃圾邮件。",
+    "Resend ({n}s)": "重新发送（{n} 秒）",
+    "Resend": "重新发送",
+    "6-digit code": "6 位验证码",
+    "Invite code (optional)": "邀请码（选填）",
+    "Signing in…": "正在登录…",
+    "By signing in you agree to the {terms} and {privacy}.": "登录即表示你同意 {terms} 和 {privacy}。",
+    "Terms of Service": "服务条款",
+    "Privacy Policy": "隐私政策",
+    "Signed in to StallionX as {email}": "已登录 StallionX：{email}",
+    "Username {name} · balance ${balance} at sign-in": "用户名 {name} · 登录时余额 ${balance}",
+    "Your key is saved as the StallionX provider below, so every agent can use its models.": "你的 Key 已保存为下面的 StallionX provider，所有 Agent 都能用它的模型。",
+    "Welcome to StallionX: your account was created and signed in": "欢迎使用 StallionX：账号已创建并登录",
+    "Signed in to StallionX": "已登录 StallionX",
+    "Click again to sign out: the StallionX provider and its key leave this computer, the key stays on your account": "再点一次退出登录：StallionX provider 和它的 Key 会从这台电脑上移除，Key 仍保留在你的账号里",
+    "Signing out…": "正在退出…",
+    "Signed out of StallionX": "已退出 StallionX",
+    "Test mode: the service sends no email, so the code is filled in": "测试模式：服务端不发邮件，验证码已自动填好",
+    "Enter an email address": "请输入邮箱地址",
+    "Enter the code from the email": "请输入邮件里的验证码",
     "Claude Code runs as": "Claude Code 运行方式",
     "Interactive mode (TUI)": "交互模式（TUI）",
     "Last request {ago}: interactive mode": "上次请求 {ago}：交互模式",
@@ -3079,6 +3106,7 @@ const I18N = {
     "{n} day": "{n} 天",
     "{n} days": "{n} 天",
     "All sessions": "全部会话",
+    "Input tokens": "输入 Token",
     "Output tokens": "输出 Token",
     "Messages": "消息",
     "{n} message": "{n} 条消息",
@@ -4357,6 +4385,33 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "这份报告已经不在了：magpie 只保留最近 5 份。",
   },
   "zh-TW": {
+    // StallionX: the account card on the Providers page (stallionx.js)
+    "StallionX account": "StallionX 帳號",
+    "Sign in to StallionX": "登入 StallionX",
+    "Sign in with your email to use StallionX's models in every agent. An address that isn't registered yet gets an account as it signs in.": "用信箱登入，所有 Agent 都能用上 StallionX 的模型。還沒註冊的信箱會在登入時自動註冊。",
+    "Email": "信箱",
+    "Send code": "傳送驗證碼",
+    "Sending…": "正在傳送…",
+    "Code sent to {email}. Check your spam folder if it isn't there.": "驗證碼已傳送到 {email}，沒收到請看看垃圾郵件。",
+    "Resend ({n}s)": "重新傳送（{n} 秒）",
+    "Resend": "重新傳送",
+    "6-digit code": "6 位驗證碼",
+    "Invite code (optional)": "邀請碼（選填）",
+    "Signing in…": "正在登入…",
+    "By signing in you agree to the {terms} and {privacy}.": "登入即表示你同意 {terms} 和 {privacy}。",
+    "Terms of Service": "服務條款",
+    "Privacy Policy": "隱私權政策",
+    "Signed in to StallionX as {email}": "已登入 StallionX：{email}",
+    "Username {name} · balance ${balance} at sign-in": "使用者名稱 {name} · 登入時餘額 ${balance}",
+    "Your key is saved as the StallionX provider below, so every agent can use its models.": "你的 Key 已儲存為下方的 StallionX provider，所有 Agent 都能用它的模型。",
+    "Welcome to StallionX: your account was created and signed in": "歡迎使用 StallionX：帳號已建立並登入",
+    "Signed in to StallionX": "已登入 StallionX",
+    "Click again to sign out: the StallionX provider and its key leave this computer, the key stays on your account": "再點一次登出：StallionX provider 和它的 Key 會從這台電腦上移除，Key 仍保留在你的帳號裡",
+    "Signing out…": "正在登出…",
+    "Signed out of StallionX": "已登出 StallionX",
+    "Test mode: the service sends no email, so the code is filled in": "測試模式：服務端不寄信，驗證碼已自動填好",
+    "Enter an email address": "請輸入信箱地址",
+    "Enter the code from the email": "請輸入信件裡的驗證碼",
     "Claude Code runs as": "Claude Code 執行方式",
     "Interactive mode (TUI)": "互動模式（TUI）",
     "Last request {ago}: interactive mode": "上次請求 {ago}：互動模式",
@@ -7414,6 +7469,7 @@ const I18N = {
     "{n} day": "{n} 天",
     "{n} days": "{n} 天",
     "All sessions": "全部會話",
+    "Input tokens": "輸入 Token",
     "Output tokens": "輸出 Token",
     "Messages": "訊息",
     "{n} message": "{n} 條訊息",
@@ -8695,6 +8751,33 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "這份報告已經不在了：magpie 只保留最近 5 份。",
   },
   ja: {
+    // StallionX: the account card on the Providers page (stallionx.js)
+    "StallionX account": "StallionX アカウント",
+    "Sign in to StallionX": "StallionX にサインイン",
+    "Sign in with your email to use StallionX's models in every agent. An address that isn't registered yet gets an account as it signs in.": "メールでサインインすると、すべてのエージェントで StallionX のモデルを使えます。未登録のアドレスはサインイン時にアカウントが作成されます。",
+    "Email": "メール",
+    "Send code": "コードを送信",
+    "Sending…": "送信中…",
+    "Code sent to {email}. Check your spam folder if it isn't there.": "{email} にコードを送りました。届かない場合は迷惑メールを確認してください。",
+    "Resend ({n}s)": "再送信（{n} 秒）",
+    "Resend": "再送信",
+    "6-digit code": "6 桁のコード",
+    "Invite code (optional)": "招待コード（任意）",
+    "Signing in…": "サインイン中…",
+    "By signing in you agree to the {terms} and {privacy}.": "サインインすると {terms} と {privacy} に同意したことになります。",
+    "Terms of Service": "利用規約",
+    "Privacy Policy": "プライバシーポリシー",
+    "Signed in to StallionX as {email}": "StallionX に {email} でサインイン中",
+    "Username {name} · balance ${balance} at sign-in": "ユーザー名 {name} · サインイン時の残高 ${balance}",
+    "Your key is saved as the StallionX provider below, so every agent can use its models.": "キーは下の StallionX プロバイダーとして保存され、すべてのエージェントがそのモデルを使えます。",
+    "Welcome to StallionX: your account was created and signed in": "StallionX へようこそ：アカウントを作成してサインインしました",
+    "Signed in to StallionX": "StallionX にサインインしました",
+    "Click again to sign out: the StallionX provider and its key leave this computer, the key stays on your account": "もう一度クリックするとサインアウト：StallionX プロバイダーとキーはこのコンピューターから削除され、キーはアカウントに残ります",
+    "Signing out…": "サインアウト中…",
+    "Signed out of StallionX": "StallionX からサインアウトしました",
+    "Test mode: the service sends no email, so the code is filled in": "テストモード：サービスはメールを送らないため、コードを自動入力しました",
+    "Enter an email address": "メールアドレスを入力してください",
+    "Enter the code from the email": "メールに届いたコードを入力してください",
     "Claude Code runs as": "Claude Code の実行方式",
     "Interactive mode (TUI)": "対話モード（TUI）",
     "Last request {ago}: interactive mode": "前回のリクエスト（{ago}）：対話モード",
@@ -11753,6 +11836,7 @@ const I18N = {
     "{n} day": "{n} 日",
     "{n} days": "{n} 日",
     "All sessions": "すべてのセッション",
+    "Input tokens": "入力トークン",
     "Output tokens": "出力トークン",
     "Messages": "メッセージ",
     "{n} message": "{n} 件のメッセージ",
@@ -13035,6 +13119,33 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "このレポートはもう残っていません。magpie は最新の 5 件だけを保存します。",
   },
   de: {
+    // StallionX: the account card on the Providers page (stallionx.js)
+    "StallionX account": "StallionX-Konto",
+    "Sign in to StallionX": "Bei StallionX anmelden",
+    "Sign in with your email to use StallionX's models in every agent. An address that isn't registered yet gets an account as it signs in.": "Melde dich mit deiner E-Mail an, um die Modelle von StallionX in jedem Agenten zu nutzen. Eine noch nicht registrierte Adresse erhält bei der Anmeldung ein Konto.",
+    "Email": "E-Mail",
+    "Send code": "Code senden",
+    "Sending…": "Wird gesendet…",
+    "Code sent to {email}. Check your spam folder if it isn't there.": "Code an {email} gesendet. Sieh im Spam-Ordner nach, falls er nicht ankommt.",
+    "Resend ({n}s)": "Erneut senden ({n} s)",
+    "Resend": "Erneut senden",
+    "6-digit code": "6-stelliger Code",
+    "Invite code (optional)": "Einladungscode (optional)",
+    "Signing in…": "Anmeldung…",
+    "By signing in you agree to the {terms} and {privacy}.": "Mit der Anmeldung stimmst du den {terms} und der {privacy} zu.",
+    "Terms of Service": "Nutzungsbedingungen",
+    "Privacy Policy": "Datenschutzerklärung",
+    "Signed in to StallionX as {email}": "Bei StallionX angemeldet als {email}",
+    "Username {name} · balance ${balance} at sign-in": "Benutzername {name} · Guthaben ${balance} bei der Anmeldung",
+    "Your key is saved as the StallionX provider below, so every agent can use its models.": "Dein Schlüssel ist unten als StallionX-Provider gespeichert, damit jeder Agent seine Modelle nutzen kann.",
+    "Welcome to StallionX: your account was created and signed in": "Willkommen bei StallionX: dein Konto wurde erstellt und angemeldet",
+    "Signed in to StallionX": "Bei StallionX angemeldet",
+    "Click again to sign out: the StallionX provider and its key leave this computer, the key stays on your account": "Erneut klicken zum Abmelden: Der StallionX-Provider und sein Schlüssel werden von diesem Computer entfernt, der Schlüssel bleibt in deinem Konto",
+    "Signing out…": "Abmeldung…",
+    "Signed out of StallionX": "Von StallionX abgemeldet",
+    "Test mode: the service sends no email, so the code is filled in": "Testmodus: Der Dienst sendet keine E-Mail, daher ist der Code eingetragen",
+    "Enter an email address": "Gib eine E-Mail-Adresse ein",
+    "Enter the code from the email": "Gib den Code aus der E-Mail ein",
     "Claude Code runs as": "Claude Code läuft als",
     "Interactive mode (TUI)": "Interaktiver Modus (TUI)",
     "Last request {ago}: interactive mode": "Letzte Anfrage {ago}: interaktiver Modus",
@@ -16103,6 +16214,7 @@ const I18N = {
     "{n} day": "{n} Tag",
     "{n} days": "{n} Tage",
     "All sessions": "Alle Sitzungen",
+    "Input tokens": "Eingabetokens",
     "Output tokens": "Ausgabe-Token",
     "Messages": "Nachrichten",
     "{n} message": "{n} Nachricht",
@@ -17536,8 +17648,37 @@ function intlLang() {
   return /^en(-|$)/i.test(sys) ? sys : "en";
 }
 
+// BRAND is the name this build ships under: StallionX, a fork of magpie.
+// The strings above and in app.js are upstream magpie's, kept as written so
+// its changes keep merging; brandText puts StallionX's name in them as they
+// are shown. internal/brand/brand.go (Text) holds the same rule for the Go
+// side, with its tests.
+const BRAND = { name: "StallionX", slug: "stallionx" };
+// words that after "magpie" are its command line (stallionx web), never
+// prose ("the magpie app" is prose)
+const BRAND_COMMANDS = new Set(["web", "serve", "daemon", "quota", "accounts", "command", "import", "presets", "doctor", "uninstall", "login", "logout", "version", "help"]);
+
+// brandText writes StallionX where magpie's name is a word of a sentence.
+// Inside an identifier, path, file, host, link or a {slot} (magpie-dev,
+// ~/.config/magpie, magpie.app, usemagpie.ai, magpie://, {magpie}) it is
+// left alone; before one of its commands it is the command, stallionx.
+function brandText(s) {
+  if (typeof s !== "string" || !s.includes("agpie")) return s;
+  return s.replace(/[Mm]agpie/g, (m, at, str) => {
+    const end = at + m.length, prev = str[at - 1] || "", next = str[end] || "";
+    if (prev && /[A-Za-z0-9_.\/:@\-\\${]/.test(prev)) return m;
+    if (next && /[A-Za-z0-9_\/:@\-\\}]/.test(next)) return m;
+    // a file (magpie.app, magpie.exe); "in magpie." ends a sentence
+    if (next === "." && /[A-Za-z]/.test(str[end + 1] || "")) return m;
+    if (m[0] === "m" && next === " " && BRAND_COMMANDS.has(/^[a-z]*/.exec(str.slice(end + 1))[0])) return BRAND.slug;
+    return BRAND.name;
+  });
+}
+
 function t(s, vars) {
-  let out = I18N[locale]?.[s] ?? s;
+  // branded before the slots are filled: a value put in one (a provider
+  // id agents see, a path) is shown as it is
+  let out = brandText(I18N[locale]?.[s] ?? s);
   if (vars) for (const k in vars) out = out.split("{" + k + "}").join(vars[k]);
   return out;
 }
@@ -17550,8 +17691,8 @@ function t(s, vars) {
 // advice) reads as given.
 let noticeRes;
 function tNotice(s) {
-  if (!s || !I18N[locale]) return s;
-  if (I18N[locale][s]) return I18N[locale][s];
+  if (!s || !I18N[locale]) return brandText(s);
+  if (I18N[locale][s]) return brandText(I18N[locale][s]);
   noticeRes ??= NOTICES.map((en) => {
     const parts = en.split(/\{(\w+)\}/), names = [];
     let re = "";
@@ -17571,7 +17712,7 @@ function tNotice(s) {
       const m = n.re.exec(rest);
       if (m && (!hit || m[0].length > hit.m[0].length || (m[0].length === hit.m[0].length && n.fixed > hit.n.fixed))) hit = { n, m };
     }
-    if (!hit) return s;
+    if (!hit) return brandText(s);
     const vars = {};
     hit.n.names.forEach((k, i) => (vars[k] ??= hit.m[i + 1]));
     out.push(t(hit.n.en, vars));

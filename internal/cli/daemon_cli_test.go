@@ -141,10 +141,10 @@ func TestDaemonStatusPrintsPage(t *testing.T) {
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("MAGPIE_ADDR", "127.0.0.1:1") // no gateway answers
 	const key = "0123456789abcdef0123456789abcdef"
-	file := filepath.Join(home, ".config", "systemd", "user", "magpie.service")
+	file := filepath.Join(home, ".config", "systemd", "user", "stallionx.service")
 	text := "ExecStart=\"/usr/bin/magpie\" serve \"--web=0.0.0.0:3430\"\nEnvironment=\"MAGPIE_WEB_KEY=" + key + "\"\n"
 	if runtime.GOOS == "darwin" {
-		file = filepath.Join(home, "Library", "LaunchAgents", "com.yetone.magpie.serve.plist")
+		file = filepath.Join(home, "Library", "LaunchAgents", "com.stallionx.client.serve.plist")
 		text = "<array><string>/usr/bin/magpie</string><string>serve</string><string>--web=0.0.0.0:3430</string></array>\n<key>MAGPIE_WEB_KEY</key><string>" + key + "</string>\n"
 	}
 	os.MkdirAll(filepath.Dir(file), 0o755)

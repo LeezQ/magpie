@@ -95,12 +95,12 @@ func TestWSLAgyPick(t *testing.T) {
 	}
 	for _, p := range []string{bashrc, zshrc} {
 		body := readFile(p)
-		if !strings.Contains(body, "# >>> magpie agy >>>\nfunction agy {\n") || !strings.Contains(body, "GOOGLE_GEMINI_BASE_URL='"+gw+"'") ||
+		if !strings.Contains(body, "# >>> stallionx agy >>>\nfunction agy {\n") || !strings.Contains(body, "GOOGLE_GEMINI_BASE_URL='"+gw+"'") ||
 			!strings.Contains(body, "GEMINI_API_KEY='"+key+"'") || strings.Contains(body, "127.0.0.1") {
 			t.Fatalf("%s:\n%s", p, body)
 		}
 	}
-	if !strings.HasPrefix(readFile(bashrc), mine+"\n# >>> magpie agy >>>") {
+	if !strings.HasPrefix(readFile(bashrc), mine+"\n# >>> stallionx agy >>>") {
 		t.Fatalf(".bashrc:\n%s", readFile(bashrc))
 	}
 	if _, err := os.Stat(filepath.Join(dhome, ".config", "fish")); !os.IsNotExist(err) {
@@ -147,7 +147,7 @@ func TestWSLAgyPick(t *testing.T) {
 	if got := readFile(bashrc); got != mine {
 		t.Fatalf(".bashrc:\n%s", got)
 	}
-	if got := readFile(zshrc); strings.Contains(got, "magpie agy") {
+	if got := readFile(zshrc); strings.Contains(got, "stallionx agy") {
 		t.Fatalf(".zshrc:\n%s", got)
 	}
 	if a.Typed() != "" || a.Launch() != "" {

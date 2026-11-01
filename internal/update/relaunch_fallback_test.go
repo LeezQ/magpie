@@ -189,7 +189,7 @@ func TestRelaunchRunsTheProgramInfoPlistNames(t *testing.T) {
 func TestRelaunchLogInMagpiesFolder(t *testing.T) {
 	cfg := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", cfg)
-	want := filepath.Join(cfg, "magpie", relaunchLogName)
+	want := filepath.Join(cfg, "stallionx", relaunchLogName)
 	if got := relaunchLog(); got != want {
 		t.Fatalf("log at %q, want %q", got, want)
 	}

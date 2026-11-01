@@ -14,12 +14,13 @@ import (
 
 // writeCatalog puts a valid models.dev-shaped file where load() will find it;
 // load() falls back to the machine's own caches, so a malformed file would
-// silently read the developer's real catalog.
+// silently read the developer's real catalog. Derive the parent from CachePath
+// so fixtures follow the fork's cache identity without changing catalog IDs.
 func writeCatalog(t *testing.T, body string) {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", dir)
-	if err := os.MkdirAll(filepath.Join(dir, "magpie"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(CachePath()), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(CachePath(), []byte(body), 0o644); err != nil {

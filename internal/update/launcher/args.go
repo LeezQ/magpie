@@ -62,5 +62,5 @@ func opensWindow(args []string) bool {
 	case "app", "gui", "tray", "panel", "-Embedding":
 		return true
 	}
-	return strings.HasPrefix(strings.ToLower(args[0]), "magpie:")
+	return strings.HasPrefix(strings.ToLower(args[0]), "stallionx:") || strings.HasPrefix(strings.ToLower(args[0]), "magpie:")
 }

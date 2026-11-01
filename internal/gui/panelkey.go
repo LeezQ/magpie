@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // The quick panel's global shortcut (Settings › General): a key
@@ -45,7 +47,7 @@ func panelKeysState() panelKeysJSON {
 	if !st.Can {
 		exe, err := os.Executable()
 		if err != nil || exe == "" {
-			exe = "magpie"
+			exe = brand.Slug
 		}
 		st.Command = shellWord(exe) + " panel"
 	}

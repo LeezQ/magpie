@@ -163,6 +163,14 @@ var cliForRoute = map[string]string{
 }
 
 var notYet = map[string]string{
+	"GET /api/stallionx":                         "StallionX desktop account metadata; no account CLI yet",
+	"GET /api/stallionx/user":                    "StallionX desktop account state; no account CLI yet",
+	"POST /api/stallionx/code":                   "StallionX desktop email-code login; no account CLI yet",
+	"POST /api/stallionx/console-session":        "window-only capability for the isolated account frame",
+	"POST /api/stallionx/repair":                 "StallionX desktop managed-access repair; no account CLI yet",
+	"POST /api/stallionx/signin":                 "StallionX desktop login; no account CLI yet",
+	"POST /api/stallionx/signout":                "StallionX desktop logout; no account CLI yet",
+	"POST /api/stallionx/sync":                   "StallionX desktop managed-access sync; no account CLI yet",
 	"POST /api/agent-fast":                       A,  // agent_models.go
 	"POST /api/agent-models/{id}":                A,  // agent_models.go
 	"GET /api/agents/cli":                        A,  // api.go

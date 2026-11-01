@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // dataHome is where the app's desktop entry, icon and WebKitGTK's data
@@ -21,7 +22,7 @@ func dataHome() string {
 // unregisterScheme takes out the desktop entry the app made for magpie://
 // links while it runs exe, or an exe that is gone, and its icon with it.
 func unregisterScheme(exe string) error {
-	entry := filepath.Join(dataHome(), "applications", "magpie.desktop")
+	entry := filepath.Join(dataHome(), "applications", brand.Slug+".desktop")
 	b, err := os.ReadFile(entry)
 	if err != nil {
 		return nil
@@ -39,7 +40,7 @@ func unregisterScheme(exe string) error {
 	if err := os.Remove(entry); err != nil {
 		return err
 	}
-	_ = os.Remove(filepath.Join(dataHome(), "icons", "hicolor", "256x256", "apps", "magpie.png"))
+	_ = os.Remove(filepath.Join(dataHome(), "icons", "hicolor", "256x256", "apps", brand.Slug+".png"))
 	return nil
 }
 
@@ -49,5 +50,5 @@ func webData() []string {
 	if appdir.Portable() != "" {
 		return nil
 	}
-	return []string{filepath.Join(dataHome(), "magpie")}
+	return []string{filepath.Join(dataHome(), brand.Slug)}
 }

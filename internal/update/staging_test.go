@@ -45,12 +45,12 @@ func stubUnregister(t *testing.T) *[]string {
 // aren't an app's, then removes the staging folder and nothing beside it.
 func TestInstallStagesNoApp(t *testing.T) {
 	apps := filepath.Join(t.TempDir(), "Applications")
-	bundle := filepath.Join(apps, "magpie.app")
+	bundle := filepath.Join(apps, "stallionx.app")
 	app(t, bundle, "old")
 	app(t, filepath.Join(apps, "Other.app"), "other")
 	staged := filepath.Join(stageDir(apps), stagedName)
 	app(t, staged, "new")
-	noApps(t, filepath.Join(apps, ".magpie-update"))
+	noApps(t, filepath.Join(apps, ".stallionx-update"))
 
 	if err := Install(staged, bundle); err != nil {
 		t.Fatal(err)
@@ -61,8 +61,8 @@ func TestInstallStagesNoApp(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(apps, "Other.app")); err != nil {
 		t.Errorf("Install removed an app beside magpie: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(apps, ".magpie-update")); !os.IsNotExist(err) {
-		t.Errorf(".magpie-update is left: %v", err)
+	if _, err := os.Stat(filepath.Join(apps, ".stallionx-update")); !os.IsNotExist(err) {
+		t.Errorf(".stallionx-update is left: %v", err)
 	}
 }
 
@@ -78,13 +78,13 @@ func TestInstallAsAdminAsideIsNoApp(t *testing.T) {
 		return nil, nil
 	}
 	cache := filepath.Join(t.TempDir(), "update")
-	if err := InstallAsAdmin(filepath.Join(cache, stagedName), "/Applications/magpie.app"); err != nil {
+	if err := InstallAsAdmin(filepath.Join(cache, stagedName), "/Applications/stallionx.app"); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(script, appleString(shellQuote(filepath.Join(cache, asideName)))) {
 		t.Errorf("the swap doesn't move the app aside to %s: %s", asideName, script)
 	}
-	if strings.Count(script, ".app") != strings.Count(script, "/Applications/magpie.app") {
+	if strings.Count(script, ".app") != strings.Count(script, "/Applications/stallionx.app") {
 		t.Errorf("the swap names another app: %s", script)
 	}
 }
@@ -99,7 +99,7 @@ func fakeApp(t *testing.T, path, v string) {
 	plist := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>com.example.magpie-update-test</string>
+<key>CFBundleIdentifier</key><string>com.example.stallionx-update-test</string>
 <key>CFBundleExecutable</key><string>magpie</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>` + v + `</string>
@@ -116,7 +116,7 @@ func fakeApp(t *testing.T, path, v string) {
 	}
 }
 
-// Stage unpacks the release's magpie.app (the zip's one top folder, as
+// Stage unpacks the release's stallionx.app (the zip's one top folder, as
 // the release builds it) to a name that isn't an app's, tells
 // LaunchServices to forget the name it was unpacked under, and Install
 // puts it in place.
@@ -127,9 +127,9 @@ func TestStageUnpacksNoApp(t *testing.T) {
 	forgot := stubUnregister(t)
 	root := t.TempDir()
 	src := filepath.Join(root, "src")
-	fakeApp(t, filepath.Join(src, "magpie.app"), "2.0")
+	fakeApp(t, filepath.Join(src, "stallionx.app"), "2.0")
 	zip := filepath.Join(root, "a.zip")
-	cmd := exec.Command("ditto", "-c", "-k", "--keepParent", "magpie.app", zip)
+	cmd := exec.Command("ditto", "-c", "-k", "--keepParent", "stallionx.app", zip)
 	cmd.Dir = src
 	if b, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("ditto: %v: %s", err, b)
@@ -143,19 +143,19 @@ func TestStageUnpacksNoApp(t *testing.T) {
 	defer srv.Close()
 
 	apps := filepath.Join(root, "Applications")
-	bundle := filepath.Join(apps, "magpie.app")
+	bundle := filepath.Join(apps, "stallionx.app")
 	fakeApp(t, bundle, "1.0")
 	rel := &Release{Version: "2.0", Assets: map[string]Asset{AppAsset(): {URL: srv.URL, SHA256: hex.EncodeToString(sum[:])}}}
 	staged, err := Stage(context.Background(), rel, bundle)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stage := filepath.Join(apps, ".magpie-update")
+	stage := filepath.Join(apps, ".stallionx-update")
 	if staged != filepath.Join(stage, stagedName) {
 		t.Errorf("staged at %s", staged)
 	}
 	noApps(t, stage)
-	if want := filepath.Join(stage, "unzip", "magpie.app"); !slices.Contains(*forgot, want) {
+	if want := filepath.Join(stage, "unzip", "stallionx.app"); !slices.Contains(*forgot, want) {
 		t.Errorf("LaunchServices was told to forget %q, want %s", *forgot, want)
 	}
 	if err := Install(staged, bundle); err != nil {
@@ -165,7 +165,7 @@ func TestStageUnpacksNoApp(t *testing.T) {
 		t.Error("the new app isn't in place")
 	}
 	if _, err := os.Stat(stage); !os.IsNotExist(err) {
-		t.Errorf(".magpie-update is left: %v", err)
+		t.Errorf(".stallionx-update is left: %v", err)
 	}
 }
 
@@ -184,18 +184,18 @@ func TestForgetOldStaging(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ForgetOldStaging("/Applications/magpie.app")
+	ForgetOldStaging("/Applications/stallionx.app")
 	want := []string{
-		"/Applications/.magpie-update/app/magpie.app",
-		"/Applications/.magpie-update/old.app",
-		filepath.Join(cache, "update", "app", "magpie.app"),
+		"/Applications/.stallionx-update/app/stallionx.app",
+		"/Applications/.stallionx-update/old.app",
+		filepath.Join(cache, "update", "app", "stallionx.app"),
 		filepath.Join(cache, "update", "old.app"),
 	}
 	if !slices.Equal(*forgot, want) {
 		t.Errorf("forgot %q, want %q", *forgot, want)
 	}
 	*forgot = nil
-	ForgetOldStaging("/Applications/magpie.app")
+	ForgetOldStaging("/Applications/stallionx.app")
 	if len(*forgot) != 0 {
 		t.Errorf("forgot %q again", *forgot)
 	}

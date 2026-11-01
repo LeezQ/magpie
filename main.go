@@ -7,6 +7,7 @@ import (
 
 	"github.com/yetone/magpie/internal/cli"
 	"github.com/yetone/magpie/internal/notices"
+	"github.com/yetone/magpie/internal/stallionx"
 	// the built-in plugins, registered with the runtime (internal/pluginrt)
 	_ "github.com/yetone/magpie/plugins/all"
 )
@@ -22,7 +23,14 @@ var version = "dev"
 //go:embed THIRD_PARTY_NOTICES
 var thirdParty string
 
+// The original MIT notice must accompany standalone binaries too, not only
+// source checkouts and application bundles.
+//
+//go:embed LICENSE
+var license string
+
 func main() {
-	notices.Text = thirdParty
+	stallionx.EnableRequiredUser()
+	notices.Text = license + "\n\n" + thirdParty
 	cli.Main(version)
 }

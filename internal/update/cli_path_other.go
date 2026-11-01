@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/proc"
 )
 
@@ -64,9 +65,11 @@ func cliDir(exe string, dirs []string, cmd string) string {
 	return ""
 }
 
-// cliPlace links exe as magpie in dir, over what is there.
+// cliPlace links exe as the command (brand.Slug, `stallionx`) in dir,
+// over what is there. Never as `magpie`: that name is an upstream magpie's
+// command, and linking over it would take it from the user.
 func cliPlace(exe, dir string) error {
-	dst := filepath.Join(dir, "magpie")
+	dst := filepath.Join(dir, brand.Slug)
 	if sameFile(dst, exe) {
 		return nil
 	}
@@ -76,7 +79,7 @@ func cliPlace(exe, dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	tmp := dst + ".magpie-new"
+	tmp := dst + "." + brand.Slug + "-new"
 	os.Remove(tmp)
 	if err := os.Symlink(exe, tmp); err != nil {
 		return err

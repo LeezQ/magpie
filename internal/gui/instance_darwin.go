@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/update"
@@ -49,7 +50,7 @@ func runningAlready(showMain bool, link string) bool {
 		// by its bundle id: the magpie running may be another copy of the
 		// app, which opening this one's path wouldn't reach
 		if update.Bundle() != "" {
-			proc.Command("open", "-b", "com.yetone.magpie").Run()
+			proc.Command("open", "-b", brand.BundleID).Run()
 		}
 	}
 	return true

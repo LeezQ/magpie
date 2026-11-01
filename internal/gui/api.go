@@ -282,11 +282,15 @@ type profileLibraryJSON struct {
 }
 
 type stateJSON struct {
-	Agents   []agentJSON   `json:"agents"`
-	Clients  []clientJSON  `json:"clients"` // who a request may come from, by id
-	Profiles []profileJSON `json:"profiles"`
-	Catalog  string        `json:"catalog"`
-	Notice   string        `json:"notice,omitempty"` // advice after a change, e.g. "restart Codex"
+	// Agents must stay first: statewrite.go streams this array without buffering
+	// the full response. Capability flags follow it, not precede it.
+	Agents           []agentJSON   `json:"agents"`
+	StallionXEnabled bool          `json:"stallionxEnabled"`
+	UpdatesOff       bool          `json:"updatesOff"`
+	Clients          []clientJSON  `json:"clients"` // who a request may come from, by id
+	Profiles         []profileJSON `json:"profiles"`
+	Catalog          string        `json:"catalog"`
+	Notice           string        `json:"notice,omitempty"` // advice after a change, e.g. "restart Codex"
 	// Connected is how the 「接入」 switch chose the model the agent starts
 	// on, in the answer to agents/connect (agent.Connection)
 	Connected *agent.Connection `json:"connected,omitempty"`
@@ -378,8 +382,12 @@ func currentFX() fxJSON {
 type settingsJSON struct {
 	settings.Settings
 	Version string `json:"version"`
-	Dir     string `json:"dir"`     // where magpie keeps its files, as shown
-	Gateway string `json:"gateway"` // the local endpoint
+	// UpdatesOff: this build asks no release feed (update.Off), so the
+	// page offers no update rows
+	StallionXEnabled bool   `json:"stallionxEnabled"`
+	UpdatesOff       bool   `json:"updatesOff,omitempty"`
+	Dir              string `json:"dir"`     // where magpie keeps its files, as shown
+	Gateway          string `json:"gateway"` // the local endpoint
 	// Builtins are the built-in plugins: each one's switch, whether it
 	// runs and what of it is in use (builtins.go)
 	Builtins []builtinJSON `json:"builtins"`
@@ -718,7 +726,7 @@ func codexWindowUnder(st settings.Settings, model string) *codexRunWindow {
 }
 
 func settingsState() settingsJSON {
-	s := settingsJSON{Settings: settings.Load(), Version: Version, Dir: tilde(settings.Dir()), Portable: settings.Portable() != "", Gateway: gateway.URL()}
+	s := settingsJSON{Settings: settings.Load(), Version: Version, UpdatesOff: update.Off(), StallionXEnabled: true, Dir: tilde(settings.Dir()), Portable: settings.Portable() != "", Gateway: gateway.URL()}
 	s.AddrEnv = os.Getenv("MAGPIE_ADDR")
 	s.Log = tilde(applog.Current())
 	s.Builtins = builtinsState()
@@ -974,7 +982,9 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		s := settings.Load()
 		// and the text size, which the Mac's header measures against the
 		// traffic lights
-		boot := map[string]any{"lang": s.Lang, "theme": s.Theme, "textSize": s.TextSize, "web": isWeb(w)}
+		// Dedicated-client visibility is available before the first paint. It
+		// is presentation only: saved plugin/provider settings are unchanged.
+		boot := map[string]any{"lang": s.Lang, "theme": s.Theme, "textSize": s.TextSize, "web": isWeb(w), "stallionxEnabled": true}
 		if s.Colorblind {
 			boot["colorblind"] = true
 		}
@@ -1336,6 +1346,8 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		writeJSON(rw, state())
 	})
 	providerRoutes(mux, w)
+	// StallionX: the account card on the Providers page (stallionx.go)
+	stallionxRoutes(mux)
 	importRoutes(mux)
 	usageRoutes(mux, w)
 	callerKeyRoutes(mux)
@@ -2538,8 +2550,9 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 	})
 	agentModelsAPI(mux)
 	speedsAPI(mux)
-	devListen(mux)
-	return noFramedAPI(held(mux))
+	h := noFramedAPI(stallionxRequired(held(mux)))
+	devListen(h)
+	return h
 }
 
 // noFramedAPI turns away a request for /api that no page of the window's
@@ -2593,7 +2606,7 @@ func held(h http.Handler) http.Handler {
 }
 
 func state() stateJSON {
-	s := stateJSON{Agents: []agentJSON{}, Profiles: []profileJSON{}, Catalog: catalog.Source(), Settings: settings.Load()}
+	s := stateJSON{StallionXEnabled: true, UpdatesOff: update.Off(), Agents: []agentJSON{}, Profiles: []profileJSON{}, Catalog: catalog.Source(), Settings: settings.Load()}
 	// state() is asked for after nearly every click, so the rate — a
 	// network fetch once every TTL — is only worth its rare latency when
 	// cny is actually chosen; usd never looks at it

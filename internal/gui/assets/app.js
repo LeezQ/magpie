@@ -52,7 +52,7 @@ const GATEWAY_HIDES = ["agents", "library"];
 // why).
 let featuresOff = new Set(window.bootPrefs?.featuresOff || []);
 const featureSel = () => [...featuresOff].map((id) => `[data-feature~="${id}"]`).join(",");
-const featureHides = (n) => { const sel = featureSel(); return !!sel && !!n?.closest(sel); };
+const featureHides = (n) => { const sel = featureSel(); return stxUI.hides(n) || (!!sel && !!n?.closest(sel)); };
 function featureStyle() {
   let st = document.getElementById("featureStyle");
   if (!st) {
@@ -1403,7 +1403,7 @@ function connectLine(a, kind) {
     else say(t("Not added · {agent} asks to add magpie when its link opens", { agent: a.name }));
     return line;
   }
-  if (kind === "empty" && !switchable(a)) { say(t("Add a key or a subscription first; then there are models to connect")); return line; }
+  if (kind === "empty" && !switchable(a)) { say(t(stxUI.enabled ? "StallionX account" : "Add a key or a subscription first; then there are models to connect")); return line; }
   if (!a.wired && a.native && a.native.provider !== "disconnected") {
     say(t(a.native.detail), "bad");
     if (a.native.provider === "invalid") line.append(driftFix(a, "Reconnect"));
@@ -1598,7 +1598,7 @@ function connectRow(a, row, who, { fields, extras, fieldBtn, sw, kind }) {
     else if (menuFromList(a)) row.append(menuButton(a));
     row.append(sw);
   } else if (kind === "empty") {
-    const add = el("button", "ag-add", t("Add a provider"));
+    const add = el("button", "ag-add", t(stxUI.enabled ? "Sign in" : "Add a provider"));
     add.type = "button";
     add.onclick = (e) => { e.stopPropagation(); addProviderFromAgents(); };
     const off = el("button", "lib-switch ag-conn");
@@ -1607,7 +1607,7 @@ function connectRow(a, row, who, { fields, extras, fieldBtn, sw, kind }) {
     off.setAttribute("role", "switch");
     off.setAttribute("aria-checked", "false");
     off.setAttribute("aria-label", t("Connect {agent} to magpie", { agent: a.name }));
-    off.title = t("Add a key or a subscription first; then there are models to connect");
+    off.title = t(stxUI.enabled ? "Sign in" : "Add a key or a subscription first; then there are models to connect");
     off.append(el("i"));
     row.append(add, off);
   } else if (kind === "link") {
@@ -1965,7 +1965,10 @@ async function hideGuide() {
 }
 
 async function addProviderFromAgents() {
+  // The tray opens the same login in the main window, never an Add sheet.
+  if (stxUI.enabled && mode === "panel") { api("window/main?view=providers", {}).catch(statusErr); return; }
   if (!await show("providers")) return;
+  if (stxUI.enabled) return;
   // the list not read yet (the page's first opening): clicked before it is
   // in, the button drew a list of nothing and threw; read, an empty list
   // opens the sheet itself
@@ -4335,6 +4338,7 @@ async function load(again) {
       next.settings = { ...next.settings, agentOrder, agentsHidden, agentsShown };
     }
     state = next;
+    if (view === "providers") stxCard();
     load.done = true;
     // the library may have drawn itself before the saved language was known
     if (applyPrefs(state.settings, state.fx) || relang) {
@@ -4423,6 +4427,7 @@ function updatePath(p) {
 // for good (Settings), or for this version (its ×, or a right-click), until
 // a newer one is out. magpie still downloads it and puts it in on quitting.
 async function renderUpdateBadge() {
+  if (state?.updatesOff) { $("#update").hidden = true; return; }
   const b = $("#update"), label = b.querySelector("span");
   const u = await api(updatePath("update")).catch(() => null);
   if (u) updateLast = u, u.at = Date.now();
@@ -5964,7 +5969,7 @@ async function loadProvidersNow() {
   // a reload's provider may be gone since
   if (typeof editing === "string" && !providers.providers.some((p) => p.id === editing)) editing = null;
   // a providers.json that can't be read is not a first use: no Add sheet
-  if (!providers.providers.length && editing === null && !providers.fileError) adding = true;
+  if (!stxUI.enabled && !providers.providers.length && editing === null && !providers.fileError) adding = true;
   if (providersPage(view)) {
     magpie.call(view, "render", was);
     backAfterLoad($("#view-" + view));
@@ -6105,7 +6110,18 @@ $("#foldOff").onclick = () => {
 // One row per provider: logo, name, the agents pointed at it, key status.
 // Everything else lives in the editor, a dialog over the page.
 let providersBehind = false;
+function stxCard() {
+  if (state?.stallionxEnabled) import("/stallionx.js").then(() => window.stxDraw($("#stxAccount"))).catch(statusErr);
+}
 function renderProviders(quiet) {
+  stxCard();
+  // Login owns provisioning, but the saved StallionX provider retains its
+  // existing editor for key visibility and models. Only other providers,
+  // new-provider forms and imports stay out of the dedicated frontend.
+  if (stxUI.enabled) {
+    adding = false; importing = null; importingApps = null;
+    if (editing !== "stallionx") editing = null;
+  }
   if (accountArranging || providerArranging) { accountRenderPending = true; return; }
   providersBehind = false;
   // a rebuild clamps the scroll to the top: put it back
@@ -6122,6 +6138,7 @@ function renderProviders(quiet) {
   $("#foldOff").title = t(offFolded ? "Show the providers turned off" : "Fold the providers turned off away");
   let dialog = null; // the editor, if one is open
   for (const p of providers.providers) {
+    if (stxUI.enabled && p.id !== "stallionx") continue;
     const list = p.off ? offList : onList;
     const open = editing === p.id;
     const row = el("div", "row provider" + (open ? " selected" : "") + (p.off ? " off" : ""));
@@ -6185,9 +6202,12 @@ function renderProviders(quiet) {
     chev.append(svg(CHEV_R, 11, 1.7));
     // a provider on is listed, and tried, in the order the user puts it in
     // (#499): its logo is the handle, as an agent row's is
-    row.append(p.off ? icon(p.icon || "generic") : providerHandle(p, row), who, uses, key, providerSwitch(p), chev);
+    // Keep the service's key pill and detail affordance. Reordering and the
+    // provider-level on/off switch are unnecessary for the dedicated client.
+    if (stxUI.enabled) row.append(icon(p.icon || "generic"), who, uses, key, chev);
+    else row.append(p.off ? icon(p.icon || "generic") : providerHandle(p, row), who, uses, key, providerSwitch(p), chev);
     // right-click: Move to Top, Move Up, Move Down, Move to Bottom (#1614)
-    if (!p.off) row.oncontextmenu = (ev) => { ev.preventDefault(); openProviderMenu(row.querySelector(".pv-handle"), p); };
+    if (!stxUI.enabled && !p.off) row.oncontextmenu = (ev) => { ev.preventDefault(); openProviderMenu(row.querySelector(".pv-handle"), p); };
     row.onclick = async () => {
       if (providerDirty() && !(await confirmDiscard())) return;
       // a list drawn before the fresh one is in (#1519) leaves out what the
@@ -7069,6 +7089,7 @@ function shinePartners(k) {
 let presetQuery = "", addReturnPick = null;
 function renderAdd() {
   const sheet = $("#addSheet");
+  if (stxUI.enabled) { sheet.hidden = true; return null; }
   // a redraw (providers reloaded) gives the focus back where it was in it
   const active = document.activeElement, hadFocus = sheet.contains(active);
   const focusPick = hadFocus && active.closest("[data-pick]")?.dataset.pick;
@@ -8417,8 +8438,10 @@ const IOS_EASE = "cubic-bezier(.32, .72, 0, 1)";
 // a declaration, so code above it can ask too
 // the system's Reduce Motion, or Settings' (#3813)
 function calm() { return document.documentElement.dataset.motion === "reduce" || matchMedia("(prefers-reduced-motion: reduce)").matches; }
-// Settings' Loading bird turned off: no bird on a skeleton or a README
-function birdOff() { return document.documentElement.dataset.bird === "off"; }
+// Settings' Loading bird turned off: no bird on a skeleton or a README.
+// StallionX's mark is a disc, not magpie's bird, and has no wing or tail to
+// hop with, so the bird never comes (its Settings row is hidden too).
+function birdOff() { return true; }
 // magpie's bird in parts, its wing and tail free to move (the header's logo
 // holds the shapes)
 const BIRD = `<svg viewBox="0 0 44 44"><use href="#bird" clip-path="url(#bird-body)"/><g class="tail"><use href="#bird" clip-path="url(#bird-tail)"/></g><g class="wing"><use href="#bird" clip-path="url(#bird-wing)"/></g></svg>`;
@@ -9962,13 +9985,13 @@ function drawEditor(p, presetID) {
     const more = el("button", "text", t("Add another {name}", { name: pr.name }));
     more.title = vertex ? t("One more {name} provider, with its own project, credentials, headers and models", { name: pr.name }) : t("One more {name} provider, with its own key, headers and models", { name: pr.name });
     more.onclick = () => { editing = { preset: pr.id }; draft = null; renderProviders(); };
-    bar.append(more);
+    if (!stxUI.enabled) bar.append(more);
   }
   if (p) {
     const dup = el("button", "text", t("Duplicate"));
     dup.title = vertex ? t("A new provider with {name}'s project, credentials, headers and models, to change before adding", { name: p.name }) : t("A new provider with {name}'s URLs, key, headers, models and balance settings, to change before adding", { name: p.name });
     dup.onclick = () => duplicateProvider(p);
-    bar.append(dup);
+    if (!stxUI.enabled) bar.append(dup);
   }
   bar.append(el("span", "grow"));
   const cancel = el("button", "text", t("Cancel"));
@@ -14537,6 +14560,29 @@ function renderKeyAccounts(p) {
       try { copy((await api("provider/key", { id: p.id, account: k.id })).key, k.name || k.masked, cp); } catch (err) { statusErr(err); }
     };
     row.append(cp, edit);
+    // The dedicated account stores a keyList too. Offer explicit reveal here,
+    // not only on the legacy single-key form. Never cache plaintext in provider
+    // state or the editable draft; closing/redrawing the editor discards it.
+    if (stxUI.enabled && p.id === "stallionx") {
+      const reveal = el("button", "text", t("Show"));
+      let shown = null;
+      reveal.onclick = async (e) => {
+        e.stopPropagation();
+        if (shown) { shown.value = ""; shown.remove(); shown = null; reveal.textContent = t("Show"); return; }
+        reveal.disabled = true;
+        try {
+          const value = (await api("provider/key", { id: p.id, account: k.id })).key;
+          if (!reveal.isConnected) return;
+          shown = input(value, "", "text");
+          shown.readOnly = true;
+          shown.setAttribute("aria-label", t("API key"));
+          row.append(shown);
+          reveal.textContent = t("Hide");
+        } catch (err) { statusErr(err); }
+        finally { reveal.disabled = false; }
+      };
+      row.append(reveal);
+    }
     // one the gateway passes over after a failure: why, and until when, on
     // a line of its own under the key's, so the row's controls stay in reach
     let restLine = null;
@@ -19458,7 +19504,7 @@ function setSetTab(tab, remember) {
     try { localStorage.setItem("magpie.settingsTab", tab); } catch {}
   }
   // Plugins is there while a plugin's panel is (magpie.panels' settings)
-  for (const id of SET_TABS) $("#setTab-" + id).hidden = featureHides($("#setTab-" + id)) || !partShows($("#setPage-" + id))
+  for (const id of SET_TABS) $("#setTab-" + id).hidden = !stxUI.setting(id) || featureHides($("#setTab-" + id)) || !partShows($("#setPage-" + id))
     || (id === "plugins" && !$("#setPage-plugins .plugin-panel"));
   if (!SET_TABS.includes(tab) || $("#setTab-" + tab).hidden) tab = SET_TABS.find((id) => !$("#setTab-" + id).hidden) || "general";
   for (const id of SET_TABS) {
@@ -19511,6 +19557,8 @@ function findSettings() {
   let any = false;
   for (const id of SET_TABS) {
     const page = $("#setPage-" + id), tab = $("#setTab-" + id);
+    // Search must not resurrect settings hidden by the dedicated shell.
+    if (!stxUI.setting(id)) { page.hidden = true; continue; }
     const part = setText(tab) + " " + id;
     let hits = 0, head = "";
     const lit = new Set();
@@ -19828,6 +19876,8 @@ function renderSettings() {
     about.append(r);
     return r;
   };
+  if (s.updatesOff) row(t("Version"), "", s.version);
+  else {
   renderUpdate(row(t("Version"), "", s.version));
   // what changed in this version, and in one waiting; a build from source
   // has no notes
@@ -19879,6 +19929,7 @@ function renderSettings() {
   row(t("Restart automatically"), s.noAutoUpdate ? t("While automatic updates are on") : t("Once an update is downloaded, restarts into it without cutting off an agent's request"), "",
     segs([["off", t("Off")], ["on", t("On")]], s.autoRestart ? "on" : "off", (v) => savePrefs({ ...keep, autoRestart: v === "on" }))).classList.add("update-restart-row", ...(s.noAutoUpdate ? ["off"] : []));
   renderUpdateMirror(row(t("Download source"), "", ""), s);
+  }
   const open = el("button", "text", t("Open"));
   open.onclick = () => api("settings/reveal", {}).catch(statusErr);
   // portable (a data folder beside magpie, #508): everything is in there
@@ -19896,23 +19947,11 @@ function renderSettings() {
   // MAGPIE_PUBLIC_URL, where other machines reach it (#1551)
   if (s.publicURL && gw !== s.publicURL) row(t("Public address"), t("MAGPIE_PUBLIC_URL: where other computers reach the gateway, with a gateway key"), s.publicURL, copyBtn(s.publicURL, t("Public address"))).id = "publicURLRow";
   const site = el("button", "text", t("Open"));
-  site.onclick = () => api("open", { url: "https://usemagpie.ai" }).catch(() => {});
-  row(t("Website"), t("downloads, docs and what's new"), "usemagpie.ai", site);
+  site.onclick = () => api("open", { url: "https://x.stallion-api.run" }).catch(() => {});
+  row(t("Website"), t("downloads, docs and what's new"), "x.stallion-api.run", site);
   const lic = el("button", "text", t("View"));
   lic.onclick = showNotices;
   row(t("Open-source licenses"), t("the notices of the code and data magpie is built with"), "", lic);
-  const join = el("button", "discord");
-  join.innerHTML = DISCORD_SVG;
-  join.append(el("span", "", t("Join Discord")));
-  join.title = "discord.gg/vGSnD3ZKQF";
-  join.onclick = () => api("open", { url: "https://discord.gg/vGSnD3ZKQF" }).catch(() => {});
-  // issues and the code are on GitHub, for those who'd rather not use Discord
-  const repo = el("button", "github");
-  repo.innerHTML = GITHUB_SVG;
-  repo.append(el("span", "", "GitHub"));
-  repo.title = "github.com/yetone/magpie";
-  repo.onclick = () => api("open", { url: "https://github.com/yetone/magpie" }).catch(() => {});
-  row(t("Community"), t("questions, ideas and feedback, on Discord or GitHub"), "", join, repo);
   // magpie uninstall, from the app (Jevik_AI on X deleted magpie's folders
   // by hand and Codex kept pointing at a gateway that was gone). Never in a
   // browser: magpie web would be taken off the computer serving the page.
@@ -23162,6 +23201,7 @@ let settingsLoad = Promise.resolve(); // show()'s read of Settings, for openSett
 async function show(v) {
   // a built-in page a plugin's page replaces (magpie.page.replaces) opens that
   v = magpie.replacing?.(v) || v;
+  if (!stxUI.view(v)) v = "providers";
   // a page gateway mode leaves out (a link to it, an address kept) opens Providers
   if (gatewayMode && GATEWAY_HIDES.includes(v)) v = "providers";
   // and one a built-in plugin switched off has, Agents
@@ -23262,7 +23302,7 @@ function setGatewayMode(on) {
 // plugin switched off leaves out
 function navHides() {
   if (mode !== "window") return;
-  for (const b of $("#nav").querySelectorAll("button[data-view]")) b.hidden = (gatewayMode && GATEWAY_HIDES.includes(b.dataset.view)) || featureHides(b);
+  for (const b of $("#nav").querySelectorAll("button[data-view]")) b.hidden = !stxUI.view(b.dataset.view) || (gatewayMode && GATEWAY_HIDES.includes(b.dataset.view)) || featureHides(b);
 }
 // applyFeatures takes the built-in plugins' state from a read of the
 // settings, or a switch on Plugins › Built-in:
@@ -23460,9 +23500,11 @@ if (mode !== "window" || !document.body.classList.contains("linux")) $("#winclos
 // when the pointer comes over it.
 function wag() {
   const logo = document.querySelector(".brand .logo");
-  if (!logo || logo.classList.contains("wag") || calm()) return;
+  // StallionX's mark has no tail to flick: nothing to play
+  const tail = logo?.querySelector(".tail");
+  if (!logo || !tail || logo.classList.contains("wag") || calm()) return;
   logo.classList.add("wag");
-  logo.querySelector(".tail").addEventListener("animationend", () => logo.classList.remove("wag"), { once: true });
+  tail.addEventListener("animationend", () => logo.classList.remove("wag"), { once: true });
 }
 document.querySelector(".brand")?.addEventListener("mouseenter", wag);
 setTimeout(wag, 250);

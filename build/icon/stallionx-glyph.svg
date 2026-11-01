@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The glyph layer of AppIcon.icon (macOS 26's Dock icon): the S alone,
+       in black on clear; icon.json gives it its colour in each appearance. -->
+  <path transform="translate(50 50) scale(0.8) translate(-50 -50)" d="M65.5 33C62.5 27 56.5 24 49.5 24C41 24 34.5 29 34.5 36.5C34.5 44.5 41.5 47.2 50 49.5C58.5 51.8 65.5 55 65.5 63.5C65.5 71 59 76 50.5 76C43 76 37 72.8 34 66.5" fill="none" stroke="#000" stroke-width="16.5" stroke-linecap="butt" stroke-linejoin="round"/>
+</svg>

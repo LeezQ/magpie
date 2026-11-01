@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/proc"
 )
 
@@ -44,12 +45,12 @@ func ForgetOldStaging(bundle string) {
 	if _, err := os.Stat(marker); err == nil {
 		return
 	}
-	dirs := []string{filepath.Join(filepath.Dir(bundle), ".magpie-update")}
+	dirs := []string{filepath.Join(filepath.Dir(bundle), "."+brand.Slug+"-update")}
 	if cache, err := appdir.SystemCache(); err == nil {
 		dirs = append(dirs, filepath.Join(cache, "update"))
 	}
 	for _, d := range dirs {
-		unregister(filepath.Join(d, "app", "magpie.app"))
+		unregister(filepath.Join(d, "app", brand.Slug+".app"))
 		unregister(filepath.Join(d, "old.app"))
 	}
 	os.MkdirAll(filepath.Dir(marker), 0o755)

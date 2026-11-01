@@ -28,6 +28,18 @@ function strings() {
       }
     }
   }
+  // Fork-owned words stay separate from upstream's dictionary and plugins.
+  const file = "stallionx-wallet-i18n.js";
+  const extra = fs.readFileSync(path.join(assets, file), "utf8");
+  new Function("magpie", extra)({ strings: (dict) => {
+    files.push({ file, src: extra, dict });
+    for (const [lang, words] of Object.entries(dict)) {
+      for (const [key, value] of Object.entries(words)) {
+        if (key in I18N[lang]) twice.push(`${lang} ${JSON.stringify(key)} in ${file}`);
+        else I18N[lang][key] = value;
+      }
+    }
+  } });
   return { I18N, files, twice };
 }
 

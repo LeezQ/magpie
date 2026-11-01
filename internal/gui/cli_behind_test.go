@@ -32,7 +32,7 @@ func TestCLIBehindIsLstatOnlyAndDismissible(t *testing.T) {
 
 	// a copy: the window says so without running anything (nothing here is
 	// executable — a binary would have to be run to report a version)
-	cli := filepath.Join(bin, "magpie")
+	cli := filepath.Join(bin, "stallionx")
 	if err := os.WriteFile(cli, []byte("not executable"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestCLIBehindIsLstatOnlyAndDismissible(t *testing.T) {
 	if got := cliBehind(); got != "" {
 		t.Fatalf("cliBehind = %q after dismiss, want empty", got)
 	}
-	b, err := os.ReadFile(filepath.Join(home, "magpie", cliQuietFile))
+	b, err := os.ReadFile(filepath.Join(home, "stallionx", cliQuietFile))
 	if err != nil || string(b) != Version+"\n" {
 		t.Fatalf("dismiss file = %q, %v; want this version, so the next one asks again", b, err)
 	}

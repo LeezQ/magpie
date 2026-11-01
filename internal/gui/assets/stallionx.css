@@ -1,0 +1,27 @@
+/* The StallionX account card at the top of the Providers page
+   (stallionx.js): the page's own card look (.provider-discovery's), the
+   mark beside a title, a form of one line that wraps on a narrow window. */
+#stxAccount { margin-bottom: 12px; }
+.stx-account { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.stx-account.on { gap: 8px; }
+.stx-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.stx-head .ic { flex: none; width: 22px; height: 22px; }
+.stx-head .who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stx-head .name { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.stx-head .sub { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.stx-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stx-form input { flex: 1 1 200px; min-width: 0; }
+.stx-form input.stx-invite { flex: 0 1 170px; }
+.stx-form button { flex: none; }
+.stx-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
+.stx-actions button.danger { color: var(--red); }
+.stx-note { margin: 0; font-size: 11.5px; color: var(--muted); }
+.stx-terms { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.stx-terms .link { padding: 0; font-size: inherit; text-decoration: underline; }
+/* Native form defaults otherwise leave a square white input in dark mode. */
+.stx-form input { height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--fg); font: inherit; font-size: 13px; }
+.stx-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stx-form { max-width: 680px; }
+
+/* Confirmation is a full sentence, not an unbreakable toolbar label. */
+.stx-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: right; }

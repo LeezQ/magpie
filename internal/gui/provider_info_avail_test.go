@@ -26,7 +26,7 @@ func TestProviderInfoReadsTheListOnce(t *testing.T) {
 		fmt.Fprintf(&b, `"m-%d": {"id":"m-%d","name":"M %d"},`, i, i, i)
 	}
 	b.WriteString(`"x": {"id":"x"}}}}`)
-	os.MkdirAll(h+"/.cache/magpie", 0o755)
+	os.MkdirAll(h+"/.cache/stallionx", 0o755)
 	if err := os.WriteFile(catalog.CachePath(), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -31,7 +31,7 @@ func TestStaleCLI(t *testing.T) {
 	const app = "0.1.500"
 	bin := t.TempDir()
 	t.Setenv("MAGPIE_BIN_DIR", bin)
-	cli := filepath.Join(bin, "magpie")
+	cli := filepath.Join(bin, "stallionx")
 	writeCopy := func() { os.WriteFile(cli, []byte("a build"), 0o755) }
 
 	t.Run("a copied release behind the app is stale", func(t *testing.T) {

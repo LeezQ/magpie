@@ -7,6 +7,14 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+// Both Run and StartupApproved use this value name; neither may address
+// upstream magpie's login item, even when they share the registry key.
+func TestForkRegistryIdentity(t *testing.T) {
+	if name != "stallionx" {
+		t.Fatalf("startup registry value = %q, want stallionx", name)
+	}
+}
+
 // Turning Open at login off has to say so when it cannot reach the Run key.
 // A Run key whose ACL refuses SET_VALUE is still readable, so nothing else
 // changed: the magpie value stays where it was and Windows starts it at the

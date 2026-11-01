@@ -12,6 +12,16 @@ import (
 // the same keyframes, turn points, length and easing as app.css plays,
 // and the bird and clip paths read from index.html.
 func TestDockFlapIsTheLogos(t *testing.T) {
+	if !dockFlapOn {
+		page, err := assets.ReadFile("assets/index.html")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(page), `id="stx-cut"`) {
+			t.Fatal("StallionX logo missing")
+		}
+		return // The fork deliberately disables the upstream wing/tail animation.
+	}
 	css, err := assets.ReadFile("assets/app.css")
 	if err != nil {
 		t.Fatal(err)

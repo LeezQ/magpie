@@ -1,0 +1,1 @@
+var e=/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_([0-9a-f]{8,})$/i;function t(t,n=8){if(t==null||t===``)return``;let r=String(t),i=e.exec(r);if(!i)return r;let a=i[1];return a.length>n?`${a.slice(0,n)}…`:a}export{t};

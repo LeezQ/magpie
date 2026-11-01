@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/edit"
 )
 
-const label = "com.yetone.magpie"
+const label = brand.BundleID
 
 func record() string {
 	home, _ := os.UserHomeDir()

@@ -191,8 +191,10 @@ func SetHome(t testing.TB, dir string) {
 // the WSL distros' homes: a home of its own doesn't cover those, and a
 // test on Windows listed the real distro's Codex sessions beside its
 // fixtures (#4177). A test of the real WSL puts System32 before the
-// stand-in itself.
-var tools = []string{"security", "secret-tool", "claude", "codex", "cursor-agent", "devin", "grok", "kiro-cli", "wsl.exe"}
+// stand-in itself. macOS' scutil also reads machine-wide state outside HOME:
+// its proxy must not receive fixture requests after NO_PROXY bypasses the
+// environment proxy. Keep that lookup inert too (ggbdpq's upstream #2562 fix).
+var tools = []string{"security", "secret-tool", "scutil", "claude", "codex", "cursor-agent", "devin", "grok", "kiro-cli", "wsl.exe"}
 
 // inertTools puts a failing stand-in for each of tools first on PATH, in
 // home/bin. Tests can still put their own fakes before it.

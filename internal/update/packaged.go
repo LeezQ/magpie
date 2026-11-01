@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/proc"
 )
 
@@ -42,7 +43,8 @@ func (p *Packaged) Name() string {
 func (p *Packaged) Command() string {
 	pkg := p.Package
 	if pkg == "" {
-		pkg = "magpie"
+		// An unknown package must never suggest upgrading upstream magpie.
+		pkg = brand.Slug
 	}
 	switch p.Manager {
 	case "pacman":

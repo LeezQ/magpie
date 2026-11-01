@@ -24,11 +24,11 @@ func newInstallFixture(t *testing.T) *installFixture {
 	root := t.TempDir()
 	f := &installFixture{
 		downloads: filepath.Join(root, "Downloads"),
-		to:        filepath.Join(root, "Local", "Programs", "magpie", "magpie.exe"),
+		to:        filepath.Join(root, "Local", "Programs", "stallionx", "stallionx.exe"),
 		profiles:  filepath.Join(root, "Roaming"),
 		versions:  map[string]uint64{},
 	}
-	f.exe = filepath.Join(f.downloads, "magpie-windows-amd64.exe")
+	f.exe = filepath.Join(f.downloads, "stallionx-windows-amd64.exe")
 	if err := os.MkdirAll(f.downloads, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestSettleInstallsADownload(t *testing.T) {
 // is and installs nothing; so does one run with MAGPIE_NO_INSTALL=1.
 func TestSettleLeavesAChosenPlace(t *testing.T) {
 	f := newInstallFixture(t)
-	tools := filepath.Join(filepath.Dir(f.downloads), "Tools", "magpie-windows-amd64.exe")
+	tools := filepath.Join(filepath.Dir(f.downloads), "Tools", "stallionx-windows-amd64.exe")
 	if err := os.MkdirAll(filepath.Dir(tools), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestSettleFailingRunsOn(t *testing.T) {
 // one of its own.
 func TestSettleKeepsTheWebViewProfile(t *testing.T) {
 	f := newInstallFixture(t)
-	old := filepath.Join(f.profiles, "magpie-windows-amd64.exe")
+	old := filepath.Join(f.profiles, "stallionx-windows-amd64.exe")
 	if err := os.MkdirAll(old, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func TestSettleKeepsTheWebViewProfile(t *testing.T) {
 	}
 
 	g := newInstallFixture(t)
-	for _, d := range []string{"magpie-windows-amd64.exe", "magpie.exe"} {
+	for _, d := range []string{"stallionx-windows-amd64.exe", "stallionx.exe"} {
 		if err := os.MkdirAll(filepath.Join(g.profiles, d), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -229,6 +229,24 @@ func TestSettleKeepsTheWebViewProfile(t *testing.T) {
 	}
 	if exists(filepath.Join(filepath.Dir(g.to), "webview-profile")) {
 		t.Fatal("pointed away from magpie.exe's own profile")
+	}
+}
+
+// An upstream-named executable's default profile may already be in use
+// by magpie. The fork starts fresh rather than adopting that live folder.
+func TestForkInstallLeavesUpstreamWebView(t *testing.T) {
+	f := newInstallFixture(t)
+	from := filepath.Join(f.downloads, "magpie.exe")
+	old := webViewHome(from)
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(f.to), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	keepWebView(from, f.to)
+	if exists(filepath.Join(filepath.Dir(f.to), "webview-profile")) {
+		t.Fatal("fork adopted upstream's WebView profile")
 	}
 }
 

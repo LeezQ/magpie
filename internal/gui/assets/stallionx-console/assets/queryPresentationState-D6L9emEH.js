@@ -1,0 +1,1 @@
+function e(e,{active:t=!0}={}){let n=e.data!==void 0,r=!!(t&&!n&&e.isError&&!e.isFetching);return{hasData:n,queryStateProps:{initialLoading:!!(t&&!n&&!r),initialError:r,refreshing:!!(t&&n&&e.isFetching),staleError:!!(t&&n&&e.isRefetchError&&!e.isFetching)}}}export{e as t};

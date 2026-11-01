@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // installPath is %LOCALAPPDATA%\Programs\magpie\magpie.exe: the user's own
@@ -17,11 +18,11 @@ func installPath() string {
 	local := appdir.Getenv("LOCALAPPDATA")
 	if local == "" {
 		if p, err := windows.KnownFolderPath(windows.FOLDERID_UserProgramFiles, 0); err == nil && p != "" {
-			return filepath.Join(p, "magpie", "magpie.exe")
+			return filepath.Join(p, brand.Slug, brand.Slug+".exe")
 		}
 		return ""
 	}
-	return filepath.Join(local, "Programs", "magpie", "magpie.exe")
+	return filepath.Join(local, "Programs", brand.Slug, brand.Slug+".exe")
 }
 
 // isDownloadFolder: Downloads and Desktop, where they are kept (the

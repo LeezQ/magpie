@@ -1,3 +1,17 @@
+# StallionX 客户端
+
+基于 magpie（MIT）的 StallionX 客户端，内置服务：**https://x.stallion-api.run**。
+在供应商页输入邮箱验证码登录；未注册邮箱由服务端自动注册。
+
+- 安全开发：`make dev`，使用独立 HOME；测试界面 http://127.0.0.1:3427。
+- 构建：`make build` 生成 `stallionx`；`make app` 生成 `StallionX.app`。
+- [实现、边界与测试说明](docs/subsystems/stallionx-client.md)。
+- [Mac / Windows 独立发布指南](docs/releases.md)：Mac 签名公证／未签名内测包、Windows 便携 ZIP、校验文件及草稿 Release。
+- 保留原项目 MIT 版权与第三方声明。下面是继承功能的上游文档，其中的下载和更新地址
+  **不是 StallionX 安装入口**。新登录接口须部署到服务端后，线上验证码登录才能使用。
+
+---
+
 <div align="center">
 
 <a href="https://usemagpie.ai/zh/"><img src="site/public/img/icon-256.png" width="112" alt="magpie"></a>

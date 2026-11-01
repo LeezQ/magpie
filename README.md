@@ -1,3 +1,19 @@
+# StallionX Client
+
+StallionX desktop client, based on magpie (MIT). Built-in service:
+**https://x.stallion-api.run**. Sign in from Providers with an email code;
+unregistered addresses are registered by the service automatically.
+
+- Develop safely: `make dev` (isolated HOME; browser UI http://127.0.0.1:3427).
+- Build: `make build` → `stallionx`; `make app` → `StallionX.app`.
+- [Fork architecture, limitations and testing](docs/subsystems/stallionx-client.md).
+- [Independent Mac / Windows release setup](docs/releases.md): signed/notarized Mac or unsigned test builds, Windows portable ZIPs, checksums and draft Releases.
+- Original MIT copyright and notices are retained. The upstream README below
+  documents inherited functionality; its download/update links are **not**
+  StallionX installation instructions.
+
+---
+
 <div align="center">
 
 <a href="https://usemagpie.ai"><img src="site/public/img/icon-256.png" width="112" alt="magpie"></a>

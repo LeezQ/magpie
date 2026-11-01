@@ -142,6 +142,9 @@ func (u *updater) start() {
 	if u.bundle != "" {
 		go update.ForgetOldStaging(u.bundle) // #3965
 	}
+	if update.Off() {
+		return // no feed to ask: magpie's would put upstream in StallionX's place
+	}
 	go func() {
 		time.Sleep(5 * time.Second) // let the app settle first
 		for {

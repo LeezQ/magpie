@@ -47,7 +47,7 @@ import (
 
 // DefaultAddr is where the gateway listens unless Settings' port or
 // MAGPIE_ADDR says otherwise.
-const DefaultAddr = "127.0.0.1:3425"
+const DefaultAddr = "127.0.0.1:3435"
 
 // Token is the bearer token agents are told to use. The gateway only
 // listens on loopback and accepts anything, but agents insist on one.
@@ -817,7 +817,7 @@ func (s *Server) Handler() http.Handler {
 	// the goroutine dump first, ahead of every lock the rest can be stuck
 	// on (dumpFirst)
 	// a socket's turns go through all of it again (socketEntry)
-	return socketEntry(s.dumpFirst(s.counted(holdCatalog(corsGuard(callerGuard(readOnlyGuard(mux, withCaller(keyLimited(mux)))))))))
+	return socketEntry(s.dumpFirst(s.counted(holdCatalog(corsGuard(callerGuard(stallionxRequired(readOnlyGuard(mux, withCaller(keyLimited(mux))))))))))
 }
 
 // routes are the client APIs, each by its pattern: readOnlyGuard reads

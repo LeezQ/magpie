@@ -73,6 +73,9 @@ func NotesBack(ctx context.Context, upto string, n int, lang string) ([]Note, er
 
 // askNotes is the site's list for q, each release's notes in lang.
 func askNotes(ctx context.Context, q url.Values, lang string) ([]Note, error) {
+	if Off() && os.Getenv("MAGPIE_NOTES_FEED") == "" {
+		return nil, ErrOff
+	}
 	if lang != "" {
 		q.Set("lang", lang)
 	}

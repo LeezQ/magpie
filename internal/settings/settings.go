@@ -18,7 +18,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/filememo"
@@ -1179,17 +1179,9 @@ const (
 	SearchFirstAPI   = "api"
 )
 
-// DefaultTextSize is the text size of settings that have never had one
-// saved. Windows' and Linux's body text is 14px against magpie's 13px at
-// 100%, a size smaller than what is around it there, so they start at
-// 110% (#914); the Mac's is 13px, as magpie's. A size once saved, 100%
-// too, is kept as it is. A var so tests can be any system.
-var DefaultTextSize = func() int {
-	if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
-		return 110
-	}
-	return 100
-}
+// DefaultTextSize makes the whole StallionX interface larger through the
+// existing webview zoom. A size explicitly saved by the user stays unchanged.
+var DefaultTextSize = func() int { return 125 }
 
 var validTerminalBundleID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]{0,254}$`)
 
@@ -1700,7 +1692,7 @@ func CheckProxy(p string) error {
 
 // DefaultPort is the gateway's port unless Settings or MAGPIE_ADDR say
 // another.
-const DefaultPort = 3425
+const DefaultPort = brand.DefaultPort
 
 // CheckPort says what is wrong with a port for the gateway: one from 1024
 // to 65535 (below that a system wants an administrator to listen on it),

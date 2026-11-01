@@ -59,7 +59,7 @@ func TestImportCCSwitch(t *testing.T) {
 		`INSERT INTO providers VALUES ('relay','claude','Some Relay','{"env":{"ANTHROPIC_BASE_URL":"https://relay.example.com","ANTHROPIC_AUTH_TOKEN":"sk-relay","ANTHROPIC_MODEL":"claude-sonnet-5"}}','https://relay.example.com','custom',2,1)`,
 		`INSERT INTO providers VALUES ('relay','codex','Some Relay','{"auth":{"OPENAI_API_KEY":"sk-relay"},"config":"model_provider = \"relay\"\nmodel = \"gpt-5.5\"\n\n[model_providers.relay]\nname = \"relay\"\nbase_url = \"https://relay.example.com/v1\"\nwire_api = \"responses\"\n"}','','custom',3,0)`,
 		`INSERT INTO providers VALUES ('ds','claude','DeepSeek','{"env":{"ANTHROPIC_BASE_URL":"https://api.deepseek.com/anthropic","ANTHROPIC_AUTH_TOKEN":"sk-ds"}}','','cn_official',4,2)`,
-		`INSERT INTO providers VALUES ('dial','pi','dial','{"api":"openai-completions","apiKey":"magpie","baseUrl":"http://127.0.0.1:3425/v1"}','','custom',5,0)`,
+		`INSERT INTO providers VALUES ('dial','pi','dial','{"api":"openai-completions","apiKey":"magpie","baseUrl":"http://127.0.0.1:3435/v1"}','','custom',5,0)`,
 		`INSERT INTO providers VALUES ('g','gemini','Gemini relay','{"env":{"GOOGLE_GEMINI_BASE_URL":"https://g.example.com","GEMINI_API_KEY":"k","GEMINI_MODEL":"gemini-3.8-flash"}}','','custom',6,0)`,
 		`INSERT INTO providers VALUES ('g2','gemini','Gemini relay under a path','{"env":{"GOOGLE_GEMINI_BASE_URL":"https://g2.example.com/gemini/","GEMINI_API_KEY":"k2"}}','','custom',7,0)`,
 	)

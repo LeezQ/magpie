@@ -15,6 +15,7 @@ import (
 
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/browsermcp"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/claudebridge"
@@ -39,7 +40,29 @@ import (
 // (-ldflags "-X main.version=…") and handed over by Main.
 var version = "dev"
 
-const usage = `magpie — one place to pick every agent's model
+// usage is the help the CLI prints, in StallionX's words: usageText is
+// magpie's as written (kept so upstream changes to it merge), and every
+// "magpie <command>" in it is the stallionx command here; the rest of
+// its prose names the product (brandUsage).
+var usage = brandUsage(usageText)
+
+// brandUsage writes the help under StallionX's name: the heading's product
+// name, each command line's `magpie` as `stallionx`, and the remaining
+// mentions through brand.Text.
+func brandUsage(s string) string {
+	s = strings.Replace(s, "magpie — ", brand.Name+" — ", 1)
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		// command lines start with two spaces and the command
+		if strings.HasPrefix(l, "  magpie") {
+			l = "  " + brand.Slug + l[len("  magpie"):]
+		}
+		lines[i] = brand.Text(l)
+	}
+	return strings.Join(lines, "\n")
+}
+
+const usageText = `magpie — one place to pick every agent's model
 
   magpie                          open the app: a window plus a menu bar icon
   magpie tray                     start in the menu bar only
@@ -189,7 +212,7 @@ func Main(v string) {
 		if len(os.Args) > 1 {
 			switch os.Args[1] {
 			case "-v", "--version", "version":
-				fmt.Println("magpie", version)
+				fmt.Println(brand.Slug, version)
 				return
 			case "-h", "--help", "help":
 				fmt.Print(usage)
@@ -424,7 +447,7 @@ func run(args []string) error {
 	}
 	// a magpie:// link the system handed over (Windows, Linux): the app
 	// opens it for the user to confirm
-	if strings.HasPrefix(strings.ToLower(args[0]), "magpie:") {
+	if strings.HasPrefix(strings.ToLower(args[0]), brand.Scheme+":") || strings.HasPrefix(strings.ToLower(args[0]), "magpie:") {
 		if !hasGUI {
 			return importCmd(args)
 		}
@@ -467,7 +490,7 @@ func run(args []string) error {
 		fmt.Print(usage)
 		return nil
 	case "-v", "--version", "version":
-		fmt.Println("magpie", version)
+		fmt.Println(brand.Slug, version)
 		return nil
 	case "licenses":
 		fmt.Print(notices.Text)

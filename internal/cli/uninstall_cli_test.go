@@ -62,7 +62,7 @@ func TestUninstallAsksFirst(t *testing.T) {
 // --help prints its usage and uninstalls nothing.
 func TestUninstallHelp(t *testing.T) {
 	ran := fakeUninstall(t, gateway.Served{}, daemon.Status{})
-	if !helpAsked([]string{"uninstall", "--help"}) || !strings.Contains(helpFor([]string{"uninstall"}), "magpie uninstall [--yes]") || *ran != 0 {
+	if !helpAsked([]string{"uninstall", "--help"}) || !strings.Contains(helpFor([]string{"uninstall"}), "stallionx uninstall [--yes]") || *ran != 0 {
 		t.Fatal("no help for uninstall")
 	}
 }

@@ -73,7 +73,47 @@ func write(t *testing.T, path, text string) {
 	}
 }
 
-// On Linux, install writes a user unit that runs `magpie serve` with the
+// Every service-manager operation and file belongs to StallionX. Keeping
+// upstream records beside it catches accidental install/uninstall takeover.
+func TestForkDaemonLeavesUpstream(t *testing.T) {
+	for _, platform := range []string{"linux", "darwin"} {
+		t.Run(platform, func(t *testing.T) {
+			log, _ := fakes(t, platform)
+			m, err := current()
+			if err != nil {
+				t.Fatal(err)
+			}
+			old, want := "magpie.service", "stallionx.service"
+			if platform == "darwin" {
+				old, want = "com.yetone.magpie.serve.plist", "com.stallionx.client.serve.plist"
+			}
+			if filepath.Base(m.file()) != want {
+				t.Fatalf("service file = %q, want %q", m.file(), want)
+			}
+			upstream := filepath.Join(filepath.Dir(m.file()), old)
+			if err := os.MkdirAll(filepath.Dir(upstream), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			write(t, upstream, "upstream service")
+			if err := Install(Options{}); err != nil {
+				t.Fatal(err)
+			}
+			if err := Uninstall(); err != nil {
+				t.Fatal(err)
+			}
+			if b, err := os.ReadFile(upstream); err != nil || string(b) != "upstream service" {
+				t.Fatalf("upstream service changed: %q, %v", b, err)
+			}
+			for _, call := range calls(t, log) {
+				if strings.Contains(call, "magpie.service") || strings.Contains(call, "com.yetone.magpie") {
+					t.Errorf("managed upstream service: %s", call)
+				}
+			}
+		})
+	}
+}
+
+// On Linux, install writes a user unit that runs `stallionx serve` with the
 // shell's PATH, proxy and agents' folders, readable by the user alone,
 // then enables and starts it through systemctl --user; uninstall stops,
 // disables and removes it (HuanCheng on Discord).
@@ -84,7 +124,7 @@ func TestSystemdInstallAndUninstall(t *testing.T) {
 	if err := Install(Options{}); err != nil {
 		t.Fatal(err)
 	}
-	file := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "magpie.service")
+	file := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "stallionx.service")
 	b, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +158,7 @@ func TestSystemdInstallAndUninstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := strings.Join(calls(t, log), "\n")
-	want := "systemctl --user is-system-running\nsystemctl --user daemon-reload\nsystemctl --user enable magpie.service\nsystemctl --user restart magpie.service"
+	want := "systemctl --user is-system-running\nsystemctl --user daemon-reload\nsystemctl --user enable stallionx.service\nsystemctl --user restart stallionx.service"
 	if got != want {
 		t.Errorf("install ran\n%s\nwant\n%s", got, want)
 	}
@@ -131,7 +171,7 @@ func TestSystemdInstallAndUninstall(t *testing.T) {
 		t.Errorf("the unit is still there: %v", err)
 	}
 	got = strings.Join(calls(t, log), "\n")
-	want = "systemctl --user is-system-running\nsystemctl --user disable --now magpie.service\nsystemctl --user daemon-reload"
+	want = "systemctl --user is-system-running\nsystemctl --user disable --now stallionx.service\nsystemctl --user daemon-reload"
 	if got != want {
 		t.Errorf("uninstall ran\n%s\nwant\n%s", got, want)
 	}
@@ -186,7 +226,7 @@ func TestSystemdStatus(t *testing.T) {
 	if len(st.Advice) != 1 || !strings.Contains(st.Advice[0], "sudo loginctl enable-linger ") {
 		t.Errorf("advice %q, want enable-linger", st.Advice)
 	}
-	if !strings.HasPrefix(st.Logs, "journalctl --user -u magpie") {
+	if !strings.HasPrefix(st.Logs, "journalctl --user -u stallionx") {
 		t.Errorf("logs %q", st.Logs)
 	}
 	// stopped by hand: SIGTERM's 15 is no failure to show
@@ -227,7 +267,7 @@ func TestRefusedBesideAutostart(t *testing.T) {
 		t.Run(os_, func(t *testing.T) {
 			log, _ := fakes(t, os_)
 			autostartEnabled = func() bool { return true }
-			if err := Install(Options{}); err == nil || !strings.Contains(err.Error(), "magpie autostart off") {
+			if err := Install(Options{}); err == nil || !strings.Contains(err.Error(), "stallionx autostart off") {
 				t.Errorf("got %v", err)
 			}
 			if c := calls(t, log); c[0] != "" {
@@ -237,7 +277,7 @@ func TestRefusedBesideAutostart(t *testing.T) {
 	}
 }
 
-// On the Mac, install writes a launch agent that runs `magpie serve` at
+// On the Mac, install writes a launch agent that runs `stallionx serve` at
 // login and again when it fails, and loads it; an install over one loaded
 // takes the old one out first.
 func TestLaunchdInstall(t *testing.T) {
@@ -248,14 +288,14 @@ func TestLaunchdInstall(t *testing.T) {
 	if err := Install(Options{}); err != nil {
 		t.Fatal(err)
 	}
-	file := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.yetone.magpie.serve.plist")
+	file := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.stallionx.client.serve.plist")
 	b, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := string(b)
 	for _, want := range []string{
-		"<key>Label</key><string>com.yetone.magpie.serve</string>",
+		"<key>Label</key><string>com.stallionx.client.serve</string>",
 		"<array><string>/opt/my magpie/magpie%1</string><string>serve</string></array>",
 		"<key>SuccessfulExit</key><false/>",
 		"<key>HTTP_PROXY</key><string>http://a&amp;b&lt;c&gt;@proxy</string>",
@@ -275,14 +315,14 @@ func TestLaunchdInstall(t *testing.T) {
 	}
 	uid := strconv.Itoa(os.Getuid())
 	got := strings.Join(calls(t, log), "\n")
-	want := "launchctl print gui/" + uid + "/com.yetone.magpie.serve\nlaunchctl bootstrap gui/" + uid + " " + file
+	want := "launchctl print gui/" + uid + "/com.stallionx.client.serve\nlaunchctl bootstrap gui/" + uid + " " + file
 	if got != want {
 		t.Errorf("install ran\n%s\nwant\n%s", got, want)
 	}
 
 	// loaded: install again takes it out first; restart kills and starts
 	os.Remove(filepath.Join(dir, "launchctl.print.fail"))
-	write(t, filepath.Join(dir, "launchctl.print.out"), "gui/501/com.yetone.magpie.serve = {\n\tactive count = 1\n\tstate = running\n\tprogram = /opt/magpie\n\tpid = 777\n\tlast exit code = (never exited)\n\tendpoints = {\n\t\tstate = active\n\t}\n}\n")
+	write(t, filepath.Join(dir, "launchctl.print.out"), "gui/501/com.stallionx.client.serve = {\n\tactive count = 1\n\tstate = running\n\tprogram = /opt/magpie\n\tpid = 777\n\tlast exit code = (never exited)\n\tendpoints = {\n\t\tstate = active\n\t}\n}\n")
 	os.Remove(log)
 	if err := Install(Options{}); err != nil {
 		t.Fatal(err)
@@ -291,7 +331,7 @@ func TestLaunchdInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = strings.Join(calls(t, log), "\n")
-	svc := "gui/" + uid + "/com.yetone.magpie.serve"
+	svc := "gui/" + uid + "/com.stallionx.client.serve"
 	want = "launchctl print " + svc + "\nlaunchctl bootout " + svc + "\nlaunchctl bootstrap gui/" + uid + " " + file + "\nlaunchctl print " + svc + "\nlaunchctl kickstart -k " + svc
 	if got != want {
 		t.Errorf("reinstall and restart ran\n%s\nwant\n%s", got, want)
@@ -300,7 +340,7 @@ func TestLaunchdInstall(t *testing.T) {
 	if err != nil || !st.Running || st.PID != 777 || st.State != "running" || st.LastExit != "" {
 		t.Errorf("status %+v, %v", st, err)
 	}
-	if !strings.Contains(st.Logs, filepath.Join("Library", "Logs", "magpie", "serve.log")) {
+	if !strings.Contains(st.Logs, filepath.Join("Library", "Logs", "stallionx", "serve.log")) {
 		t.Errorf("logs %q", st.Logs)
 	}
 
@@ -321,7 +361,7 @@ func TestLaunchdInstall(t *testing.T) {
 func TestUnsupported(t *testing.T) {
 	prev := goos
 	t.Cleanup(func() { goos = prev })
-	for os_, want := range map[string]string{"windows": "magpie autostart on", "android": "Termux:Boot"} {
+	for os_, want := range map[string]string{"windows": "stallionx autostart on", "android": "Termux:Boot"} {
 		goos = os_
 		if err := Install(Options{}); !errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: %v", os_, err)
@@ -337,17 +377,17 @@ func TestPick(t *testing.T) {
 		t.Skip("links")
 	}
 	dir := t.TempDir()
-	real := filepath.Join(dir, "Cellar", "magpie", "1.0", "magpie")
+	real := filepath.Join(dir, "Cellar", "stallionx", "1.0", "stallionx")
 	os.MkdirAll(filepath.Dir(real), 0o755)
 	write(t, real, "x")
 	os.Chmod(real, 0o755)
 	bin := filepath.Join(dir, "bin")
 	os.MkdirAll(bin, 0o755)
-	if err := os.Symlink(real, filepath.Join(bin, "magpie")); err != nil {
+	if err := os.Symlink(real, filepath.Join(bin, "stallionx")); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin)
-	if got, err := pick(real, real); err != nil || got != filepath.Join(bin, "magpie") {
+	if got, err := pick(real, real); err != nil || got != filepath.Join(bin, "stallionx") {
 		t.Errorf("got %q, %v; want the link on PATH", got, err)
 	}
 	// another magpie on PATH: this one
@@ -358,7 +398,7 @@ func TestPick(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 	for _, p := range []string{
-		filepath.Join(os.TempDir(), "go-build123", "b001", "exe", "magpie"),
+		filepath.Join(os.TempDir(), "go-build123", "b001", "exe", "stallionx"),
 		"/private/var/folders/x/T/AppTranslocation/ABC/d/magpie.app/Contents/MacOS/magpie",
 	} {
 		if _, err := pick(p, p); err == nil {
@@ -442,10 +482,10 @@ func TestInstallWithWeb(t *testing.T) {
 		arg, keyIn string
 	}{
 		{"linux", func() string {
-			return filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "magpie.service")
+			return filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "stallionx.service")
 		}, "ExecStart=\"/opt/my magpie/magpie%%1\" serve \"--web=0.0.0.0:3430\"\n", "Environment=\"MAGPIE_WEB_KEY=" + key + "\"\n"},
 		{"darwin", func() string {
-			return filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.yetone.magpie.serve.plist")
+			return filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.stallionx.client.serve.plist")
 		}, "<array><string>/opt/my magpie/magpie%1</string><string>serve</string><string>--web=0.0.0.0:3430</string></array>", "<key>MAGPIE_WEB_KEY</key><string>" + key + "</string>"},
 	} {
 		t.Run(c.goos, func(t *testing.T) {

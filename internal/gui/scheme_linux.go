@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/proc"
 )
 
@@ -47,19 +48,21 @@ func registerScheme() error {
 	data := dataHome()
 	iconErr := installIcon(data)
 	dir := filepath.Join(data, "applications")
-	path := filepath.Join(dir, "magpie.desktop")
+	// StallionX's own entry, icon and scheme: magpie.desktop and
+	// x-scheme-handler/magpie stay an upstream magpie's
+	path := filepath.Join(dir, brand.Slug+".desktop")
 	entry := `[Desktop Entry]
 Type=Application
-Name=magpie
+Name=` + brand.Name + `
 Comment=Every agent's model. One place.
 Exec=` + exe + ` %u
-Icon=magpie
+Icon=` + brand.Slug + `
 StartupWMClass=` + programName + `
 Categories=Development;Utility;
-MimeType=x-scheme-handler/magpie;
+MimeType=x-scheme-handler/` + brand.Scheme + `;
 Terminal=false
 `
-	if old, err := os.ReadFile(path); err == nil && strings.Contains(string(old), "Exec="+exe+" %u") && strings.Contains(string(old), "x-scheme-handler/magpie") &&
+	if old, err := os.ReadFile(path); err == nil && strings.Contains(string(old), "Exec="+exe+" %u") && strings.Contains(string(old), "x-scheme-handler/"+brand.Scheme) &&
 		strings.Contains(string(old), "\nStartupWMClass="+programName+"\n") {
 		return iconErr
 	}
@@ -70,14 +73,14 @@ Terminal=false
 		return err
 	}
 	_ = proc.Command("update-desktop-database", dir).Run()
-	return errors.Join(iconErr, proc.Command("xdg-mime", "default", "magpie.desktop", "x-scheme-handler/magpie").Run())
+	return errors.Join(iconErr, proc.Command("xdg-mime", "default", brand.Slug+".desktop", "x-scheme-handler/"+brand.Scheme).Run())
 }
 
 // installIcon puts magpie's icon where the entry's Icon=magpie is looked
 // up, the user's hicolor theme, unless the same picture is there already.
 func installIcon(data string) error {
 	dir := filepath.Join(data, "icons", "hicolor", "256x256", "apps")
-	path := filepath.Join(dir, "magpie.png")
+	path := filepath.Join(dir, brand.Slug+".png")
 	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, desktopIcon) {
 		return nil
 	}
@@ -91,20 +94,21 @@ func installIcon(data string) error {
 	return os.Rename(tmp, path)
 }
 
-// keepWebData moves WebKitGTK's data (the pages' localStorage, which holds
-// choices like favourite models and masked emails) to the folder it now
-// uses. WebKitGTK names that folder after the program, which was the
-// executable's name until magpie set programName: a release run as
-// downloaded kept it in ~/.local/share/magpie-linux-amd64. It moves only
-// WebKit's own folder (one holding localstorage), and only when magpie's
-// isn't there yet.
+// keepWebData only carries earlier StallionX downloads' WebKitGTK data
+// into its stable program folder. A fork binary may still be named magpie
+// by a development build; that never makes upstream magpie's data ours.
 func keepWebData() {
 	exe, err := os.Executable()
 	if err != nil {
 		return
 	}
-	old := filepath.Base(exe)
-	if old == programName || old == "." || old == string(filepath.Separator) {
+	keepWebDataFrom(filepath.Base(exe))
+}
+
+// keepWebDataFrom accepts only the fork's download names, never a generic
+// executable name that could be an upstream installation's profile.
+func keepWebDataFrom(old string) {
+	if !strings.HasPrefix(old, brand.Slug+"-") || filepath.Base(old) != old {
 		return
 	}
 	data := dataHome()

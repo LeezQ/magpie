@@ -47,7 +47,7 @@ func stashImport(link string) string {
 // ImportLink is the link among a launch's arguments, if any.
 func ImportLink(args []string) string {
 	for _, a := range args {
-		if strings.HasPrefix(strings.ToLower(a), provider.Scheme+":") {
+		if strings.HasPrefix(strings.ToLower(a), provider.Scheme+":") || strings.HasPrefix(strings.ToLower(a), "magpie:") {
 			return a
 		}
 	}

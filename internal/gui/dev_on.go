@@ -128,9 +128,10 @@ func devListen(h http.Handler) {
 		log.Println("dev ui:", err)
 		return
 	}
-	log.Println("dev ui:", "http://"+addr+"/?theme=dark")
-	devUI = &http.Server{Handler: h}
-	go devUI.Serve(ln)
+	log.Println("dev ui:", "http://"+ln.Addr().String()+"/?theme=dark")
+	srv := &http.Server{Addr: ln.Addr().String(), Handler: h}
+	devUI = srv
+	go srv.Serve(ln)
 }
 
 // devUI is the page served on MAGPIE_DEV_UI, nil when it isn't.

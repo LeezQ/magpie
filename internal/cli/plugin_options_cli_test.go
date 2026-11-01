@@ -23,7 +23,7 @@ func optionsHome(t *testing.T, opts string) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
 	t.Setenv("MAGPIE_BUN", "")
-	dir := filepath.Join(home, ".config", "magpie")
+	dir := filepath.Join(home, ".config", "stallionx")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}

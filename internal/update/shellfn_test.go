@@ -55,11 +55,11 @@ func TestShellFunction(t *testing.T) {
 	if strings.Join(in, ",") != rc+","+crlf {
 		t.Fatalf("in = %v", in)
 	}
-	want := mine + "\n\n# >>> magpie agy >>>\nagy() { # posix\n  '" + exe + "' agy run \"$@\"\n}\n# <<< magpie agy <<<\n"
+	want := mine + "\n\n# >>> stallionx agy >>>\nagy() { # posix\n  '" + exe + "' agy run \"$@\"\n}\n# <<< stallionx agy <<<\n"
 	if got := read(t, rc); got != want {
 		t.Fatalf(".zshrc:\n%s\nwant:\n%s", got, want)
 	}
-	if got := read(t, crlf); !strings.HasPrefix(got, ps+"\r\n# >>> magpie agy >>>\r\nagy() { # powershell\r\n") || strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\n") {
+	if got := read(t, crlf); !strings.HasPrefix(got, ps+"\r\n# >>> stallionx agy >>>\r\nagy() { # powershell\r\n") || strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\n") {
 		t.Fatalf("PowerShell's profile lost its BOM or CRLF: %q", got)
 	}
 	if _, err := os.Stat(fish); !os.IsNotExist(err) {
@@ -111,8 +111,24 @@ func TestShellFunction(t *testing.T) {
 	// the shell a terminal opens gets a profile made for it
 	profiles[1].Create = true
 	ShellFunction("agy", fnBody)
-	if got := read(t, fish); got != "# >>> magpie agy >>>\nagy() { # fish\n  '"+exe+"' agy run \"$@\"\n}\n# <<< magpie agy <<<\n" {
+	if got := read(t, fish); got != "# >>> stallionx agy >>>\nagy() { # fish\n  '"+exe+"' agy run \"$@\"\n}\n# <<< stallionx agy <<<\n" {
 		t.Fatalf("made fish profile:\n%s", got)
+	}
+}
+
+// Installing or dropping the fork's shell function must leave upstream's
+// marked block byte-identical, even when the public function name matches.
+func TestForkShellBlockLeavesUpstream(t *testing.T) {
+	upstream := "# >>> magpie agy >>>\nagy() { magpie agy run; }\n# <<< magpie agy <<<\n"
+	if got := withFnBlock(upstream, "agy", "", false); got != upstream {
+		t.Fatalf("removed upstream's block: %q", got)
+	}
+	added := withFnBlock(upstream, "agy", "agy() { stallionx agy run; }", false)
+	if !strings.HasPrefix(added, upstream) || !strings.Contains(added, "# >>> stallionx agy >>>") {
+		t.Fatalf("replaced upstream's block: %q", added)
+	}
+	if got := withFnBlock(added, "agy", "", false); got != upstream {
+		t.Fatalf("upstream profile changed after removal: %q", got)
 	}
 }
 
@@ -120,11 +136,11 @@ func TestShellFunction(t *testing.T) {
 // cut, another tool's block left alone.
 func TestWithFnBlock(t *testing.T) {
 	for _, c := range []struct{ name, in, body, want string }{
-		{"empty", "", "x", "# >>> magpie agy >>>\nx\n# <<< magpie agy <<<\n"},
-		{"ends with newline", "a\n", "x", "a\n\n# >>> magpie agy >>>\nx\n# <<< magpie agy <<<\n"},
-		{"out", "a\n\n# >>> magpie agy >>>\nx\n# <<< magpie agy <<<\n", "", "a\n"},
-		{"out, between lines", "a\n\n# >>> magpie agy >>>\nx\n# <<< magpie agy <<<\nb\n", "", "a\nb\n"},
-		{"close cut", "a\n# >>> magpie agy >>>\nb\n", "", "a\nb\n"},
+		{"empty", "", "x", "# >>> stallionx agy >>>\nx\n# <<< stallionx agy <<<\n"},
+		{"ends with newline", "a\n", "x", "a\n\n# >>> stallionx agy >>>\nx\n# <<< stallionx agy <<<\n"},
+		{"out", "a\n\n# >>> stallionx agy >>>\nx\n# <<< stallionx agy <<<\n", "", "a\n"},
+		{"out, between lines", "a\n\n# >>> stallionx agy >>>\nx\n# <<< stallionx agy <<<\nb\n", "", "a\nb\n"},
+		{"close cut", "a\n# >>> stallionx agy >>>\nb\n", "", "a\nb\n"},
 		{"another's block", "# >>> conda initialize >>>\nc\n# <<< conda initialize <<<\n", "", "# >>> conda initialize >>>\nc\n# <<< conda initialize <<<\n"},
 		{"none to drop", "a", "", "a"},
 	} {

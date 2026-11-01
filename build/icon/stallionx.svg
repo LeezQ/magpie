@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- StallionX mark: a white S on a black disc, redrawn as a vector from
+       the service's 64px logo.png (the S about 45% of the disc's height,
+       flat-cut ends). The S is one stroke (id "s") so every size, the tray
+       glyph, the app tile and the favicon, draws it from the same path:
+       build/icon/stallionx-icons.sh renders them all from these files. -->
+  <circle cx="50" cy="50" r="48" fill="#111111"/>
+  <path id="s" transform="translate(50 50) scale(0.66) translate(-50 -50)" d="M65.5 33C62.5 27 56.5 24 49.5 24C41 24 34.5 29 34.5 36.5C34.5 44.5 41.5 47.2 50 49.5C58.5 51.8 65.5 55 65.5 63.5C65.5 71 59 76 50.5 76C43 76 37 72.8 34 66.5" fill="none" stroke="#ffffff" stroke-width="16.5" stroke-linecap="butt" stroke-linejoin="round"/>
+</svg>

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // The Windows app is one exe with no installer, and the site's download
@@ -148,6 +149,12 @@ func installFresh(exe, to string) error {
 // pages' storage there would be lost to a new profile under magpie.exe's
 // name. Nothing when that one has a profile already.
 func keepWebView(exe, to string) {
+	// Default WebView2 folders are keyed by executable name. A development
+	// build called magpie.exe must never adopt upstream's live profile.
+	name := strings.ToLower(filepath.Base(exe))
+	if name != brand.Slug+".exe" && !strings.HasPrefix(name, brand.Slug+"-") {
+		return
+	}
 	home := webViewHome
 	old, now := home(exe), home(to)
 	if old == "" || now == "" || samePath(old, now) || exists(now) || !exists(old) {

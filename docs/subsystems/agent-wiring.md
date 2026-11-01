@@ -1,5 +1,7 @@
 # Agent wiring
 
+> StallionX fork: see [client identity, account flow and development isolation](stallionx-client.md) for this build’s differences from upstream.
+
 magpie connects a coding agent to its gateway by editing the agent's own
 config. That covers the endpoint, the key `magpie-<agent>` and the model,
 in the agent's own format. When the agent is disconnected, magpie puts back
@@ -156,6 +158,29 @@ something else shows up as drift.
 - OmO and Prime Agent write a Gemini-capable model as `google-generative-ai` at the gateway's `/v1beta` (`piModelJSON` in [`agents.go`](../../internal/agent/agents.go)); each one's Google client takes the version path from `baseUrl` (senpi-ai's `apiVersion = ""`, Prime Agent's `pa-ai` `providers/google.rs`). omp does the same in `models.yml` (`ompProviderAt` in [`omp.go`](../../internal/agent/omp.go), #4277): its `google-generative-ai` posts to `baseUrl/models/<id>:streamGenerateContent?alt=sse` (pi-ai `providers/google.ts`, 16.0.0 to 18.14.0). Its Google client throws without a key, but under `auth: none` omp hands it its no-auth key `N/A`, which it sends as `x-goog-api-key` and loopback takes, so the provider stays keyless; a WSL omp under NAT sends its `apiKey` there. A Gemini 3 or later model thinks with `mode: google-level` (thinkingLevel MINIMAL to HIGH; xhigh and max go as HIGH), a Gemini 1.x or 2.x one with `budget`, which omp sends as `thinkingBudget: -1` (`ompGeminiMode`; `TestOmpGeminiModelsAskedOnGeminisAPI`). Checked with omp 18.14.0 against the gateway and a fake Gemini server. Pi and StepCode keep such a model on Chat, which the gateway translates (`piAsked`). StepCode registers no `google-generative-ai` stream, only `anthropic-messages`, `openai-completions` and `openai-responses` (Step-Code `packages/providers/src/compat.ts`), though its docs list it. Pi's own agent folder is read by apps that run Pi's SDK on it too: Raft's daemon (`@botiverse/raft-daemon`, pi-ai 0.83.0) opens `~/.pi/agent/models.json` and hands every request its own fetch, which pi-ai's Google adapter refuses before sending ("Custom fetch is not supported by the Google Generative AI adapter", in pi-ai 1.4.0 too; yunfei9958 on X, `TestPiFolderKeepsGeminiOnChatForRaft`). `magpieModels` in [`route.go`](../../internal/agent/route.go) includes Gemini and Code Assist capabilities when no native Chat, Responses or Messages API was selected; this includes a plugin model declaring `@ai-sdk/google`. Requests keep going through the gateway and the plugin's sign-in and fetch, with the gateway's usual translation where needed. A normal model sync updates existing entries. Routing groups retain their existing API choice, and Pencil remains on Chat. Pi resolves a level there to one of Gemini's four (minimal, low, medium, high) and throws on any other, so a level the model names otherwise is set to null in `thinkingLevelMap` (`TestPiGoogleThinkingLevelsAreGeminis`).
 
 ## Verification
+
+The macOS responsibility check in
+[`TestCombinedOutputOwnAnswersForItself`](../../internal/proc/disclaim_test.go)
+needs a launch context that actually inherits responsibility. A command tree
+rooted outside a responsible GUI app can report every process as responsible
+for itself: on macOS 26.6.2, the same test binary failed its **plain-child
+control** when run directly from such a shell, but passed when launched by
+LaunchServices as a temporary `.app`. This failure occurs before
+`CombinedOutputOwn` runs; do not remove the control or treat a self-responsible
+plain child as proof that disclaiming works.
+
+For that environment, build the focused test binary with `go test -c -race
+-tags nogui ./internal/proc` under the isolated HOME and pinned Go caches
+[described here](provider-plugins.md#verification). Put it in a temporary app's
+`Contents/MacOS`, with `CFBundleExecutable` pointing to it, then launch the app
+with `open -n -g -W`, `--env HOME=<temporary-home>`, and separate `--stdout` /
+`--stderr` logs. Pass `--args -test.run '^TestCombinedOutputOwn' -test.v
+-test.count=20 -test.timeout=2m`; inspect the logs, since `open`'s exit status
+is not the test result. This ran all 60 checks without skips or race reports.
+A build-only Go overlay setting the disclaimer to `0` instead of `1` made the
+same GUI-launched test fail at the **disclaimed-child** assertion, confirming
+that it still detects the production regression. Neither run exercises a
+real privacy dialog. Remove the temporary app and HOME after verification.
 
 ```sh
 go test -tags nogui ./internal/agent -run 'TestVSCode|TestZooCode'

@@ -22,6 +22,7 @@ import (
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/autostart"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/library"
 	"github.com/yetone/magpie/internal/omarchy"
@@ -404,7 +405,7 @@ func Run(version string, showMain bool, link string) error {
 		// second launch); it hands its arguments to the running one and quits.
 		// The Mac sends the link to the running app itself.
 		SingleInstance: singleInstance(h),
-		Name:           "magpie",
+		Name:           brand.Name,
 		Description:    "one place to pick every agent's model",
 		Icon:           appIconFor(),
 		Assets:         application.AssetOptions{Handler: ownWindow(handler)},
@@ -465,7 +466,7 @@ func Run(version string, showMain bool, link string) error {
 		appMenu := application.DefaultApplicationMenu()
 		help := appMenu.FindByRole(application.HelpMenu).GetSubmenu()
 		help.Clear()
-		help.Add("Learn More").OnClick(func(*application.Context) { _ = h.OpenURL("https://usemagpie.ai") })
+		help.Add("Learn More").OnClick(func(*application.Context) { _ = h.OpenURL(brand.ServiceURL) })
 		h.app.Menu.Set(appMenu)
 	}
 	if Started != nil {
@@ -479,7 +480,12 @@ func Run(version string, showMain bool, link string) error {
 	// would show every hidden window on it, the panel too, so the hook
 	// answers first and stops it. The icon flaps as the header logo does.
 	h.app.Event.RegisterApplicationEventHook(events.Mac.ApplicationShouldHandleReopen, func(e *application.ApplicationEvent) {
-		go dockFlap()
+		// StallionX: the Dock flap cuts magpie's bird into wing, tail and
+		// body (dockflap_darwin.go); the S mark has none of them, so the
+		// tile stays still
+		if dockFlapOn {
+			go dockFlap()
+		}
 		application.InvokeSync(h.reopenMain)
 		e.Cancel()
 	})
@@ -559,10 +565,10 @@ func Run(version string, showMain bool, link string) error {
 	if runtime.GOOS == "linux" {
 		// set before the tray starts, it is the item's id too, which
 		// Omarchy's bar pins it by (Wails calls it "Wails" otherwise)
-		h.tray.SetLabel("magpie")
+		h.tray.SetLabel(brand.Slug)
 		go dropTrayName()
 	}
-	h.tray.SetTooltip("magpie")
+	h.tray.SetTooltip(brand.Name)
 	if icon, template := trayIconFor(runtime.GOOS, traySchemeLight()); template {
 		h.tray.SetTemplateIcon(icon)
 	} else {
@@ -699,7 +705,7 @@ func singleInstance(h *host) *application.SingleInstanceOptions {
 	}
 	sum := sha256.Sum256([]byte(settings.Dir()))
 	return &application.SingleInstanceOptions{
-		UniqueID: "ai.usemagpie.app.i" + hex.EncodeToString(sum[:6]),
+		UniqueID: brand.BundleID + ".i" + hex.EncodeToString(sum[:6]),
 		OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
 			args := d.Args
 			if len(args) > 0 {
@@ -768,7 +774,7 @@ func (h *host) setBird(b []byte) {
 func panelOptions(goos, theme string) application.WebviewWindowOptions {
 	o := application.WebviewWindowOptions{
 		Name:            "panel",
-		Title:           "magpie",
+		Title:           brand.Name,
 		URL:             "/?mode=panel" + theme,
 		Width:           panelWidth,
 		Height:          520,

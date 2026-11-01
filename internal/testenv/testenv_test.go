@@ -90,6 +90,28 @@ func TestIsolateStandsInForWSL(t *testing.T) {
 	}
 }
 
+// Changing HOME does not isolate macOS's machine-wide network settings.
+// Resolve the real lookup name and run its inert replacement, so removing
+// scutil from the isolation list makes this regression fail even on a host
+// without a configured proxy (the fixture must never ask that host at all).
+func TestIsolateStandsInForSystemProxy(t *testing.T) {
+	for _, k := range append(folderVars, "PATH", Marker) {
+		t.Setenv(k, os.Getenv(k))
+	}
+	home, err := Isolate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { remove(home) })
+	got, err := exec.LookPath("scutil")
+	if err != nil || !within(got, home) {
+		t.Fatalf("scutil is %q (%v), not a stand-in in %s", got, err, home)
+	}
+	if out, err := exec.Command(got, "--proxy").Output(); err == nil || len(out) > 0 {
+		t.Fatalf("the stand-in read system proxy settings: %q, %v", out, err)
+	}
+}
+
 // A binary started again by a test keeps that test's homes, all in the
 // temporary folder; one pointing anywhere else is refused.
 func TestCheckChild(t *testing.T) {

@@ -343,7 +343,7 @@ func TestOpenCodeKeepsItsOwnGatewayProviders(t *testing.T) {
 	cfg := filepath.Join(home, ".config", "opencode", "opencode.json")
 	writeFile(t, cfg, `{
   "provider": {
-    "magpie-relay": {"npm": "@ai-sdk/openai-compatible", "options": {"baseURL": "http://localhost:3425/v1/"}, "models": {"relay/glm-4.6": {}}},
+    "magpie-relay": {"npm": "@ai-sdk/openai-compatible", "options": {"baseURL": "http://localhost:3435/v1/"}, "models": {"relay/glm-4.6": {}}},
     "elsewhere": {"options": {"baseURL": "https://example.com/v1"}, "models": {"relay/glm-4.6": {}}}
   },
   "model": "magpie-relay/relay/glm-4.6"
@@ -359,7 +359,7 @@ func TestOpenCodeKeepsItsOwnGatewayProviders(t *testing.T) {
 		t.Fatal("magpie's provider added beside the file's own")
 	}
 	// a model none of them lists still gets magpie's provider
-	os.WriteFile(cfg, []byte(`{"provider": {"magpie-relay": {"options": {"baseURL": "http://127.0.0.1:3425/v1"}, "models": {}}}}`), 0o644)
+	os.WriteFile(cfg, []byte(`{"provider": {"magpie-relay": {"options": {"baseURL": "http://127.0.0.1:3435/v1"}, "models": {}}}}`), 0o644)
 	if err := oc.Fields[0].Set("magpie/relay/glm-4.6"); err != nil {
 		t.Fatal(err)
 	}

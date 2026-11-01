@@ -34,10 +34,10 @@ func TestPluginMarketInParts(t *testing.T) {
 		agent: map[string]any{"info": map[string]any{"version": "0.1.1", "icon": data}, "at": time.Now()},
 	}
 	b, _ := json.Marshal(kept)
-	if err := os.MkdirAll(filepath.Join(cache, "magpie"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(cache, "stallionx"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cache, "magpie", "plugin-npm.json"), b, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cache, "stallionx", "plugin-npm.json"), b, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	plugin.ReloadInfo()

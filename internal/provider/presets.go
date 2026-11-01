@@ -3,6 +3,8 @@ package provider
 import (
 	"cmp"
 	"slices"
+
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // A preset is a vendor magpie already knows: adding one only asks for the key.
@@ -158,8 +160,20 @@ var arkPlanImages = map[string]bool{
 var alibabaPlanModels = []string{"auto", "qwen3.8-max", "qwen3.8-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.6-flash",
 	"deepseek-v4.1-flash", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4-flash-0731", "glm-5.3", "glm-5.2"}
 
+// StallionXPreset is the built-in StallionX service's preset id; the
+// sign-in (internal/stallionx) saves the account's key as the provider of
+// this id.
+const StallionXPreset = "stallionx"
+
 // presets are ordered as they appear in the picker.
 var presets = []PresetDef{
+	// StallionX, the service this build is made for: first among the
+	// relays. Its sign-in (Providers page, by email and code) fills the key
+	// in; one made on the service's site can be pasted here too.
+	{ID: StallionXPreset, Name: brand.Name, Icon: StallionXPreset, Kind: KindRelay,
+		Chat: brand.ServiceURL + "/v1", Responses: brand.ServiceURL + "/v1", Anthropic: brand.ServiceURL,
+		Note:    "Sign in with your email on the Providers page",
+		Website: brand.ServiceURL, KeysURL: brand.ServiceURL + "/personal/token"},
 	{ID: "anthropic", Name: "Anthropic", Icon: "claude-color", Kind: KindVendor, Catalog: "anthropic",
 		Anthropic: "https://api.anthropic.com",
 		Website:   "https://console.anthropic.com", KeysURL: "https://console.anthropic.com/settings/keys",

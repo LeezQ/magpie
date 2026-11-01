@@ -1,5 +1,7 @@
 # GUI app shell
 
+> StallionX fork: see [client identity, account flow and development isolation](stallionx-client.md) for this build’s differences from upstream.
+
 The desktop app has a tray (menu bar) icon whose click drops a compact
 panel, and a regular window. Both show one small web UI served from
 embedded assets. The page talks to Go over a JSON API on the same handler,

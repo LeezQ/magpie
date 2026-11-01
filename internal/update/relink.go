@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/proc"
 )
 
@@ -63,7 +64,7 @@ func CopiedCLI() string {
 		}
 		bin = filepath.Join(home, ".local", "bin")
 	}
-	cli := filepath.Join(bin, "magpie")
+	cli := filepath.Join(bin, brand.Slug)
 	st, err := os.Lstat(cli)
 	if err != nil || !st.Mode().IsRegular() {
 		return "" // absent, the installer's link, or nothing to point at
@@ -85,5 +86,5 @@ var cliVersion = func(path string) string {
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(out)), "magpie"))
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(out)), brand.Slug))
 }

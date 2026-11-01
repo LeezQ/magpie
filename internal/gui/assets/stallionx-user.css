@@ -1,0 +1,44 @@
+/* Account policy is separate from presentation. Theme colors and focus styles
+   remain owned by app.css; only this isolated gate has roomier login geometry. */
+html.stx-user-locked body > :not(#stxUserGate):not(script):not(style):not(link) { visibility: hidden !important; pointer-events: none !important; }
+#stxUserGate[hidden] { display: none; }
+html.stx-account-only #nav > :not(#stxWalletEntry):not(#stxcNavPending):not([data-stx-route]):not(.stxc-nav-group), html.stx-account-only #prefs, html.stx-account-only #sideGw { display: none !important; }
+.stxu-gate { position: fixed; inset: 0; z-index: 10000; overflow: auto; display: grid; place-items: center; padding: 48px 16px 32px; background: var(--bg); color: var(--fg); }
+/* A single bounded surface anchors the form in wide desktop windows. Auto
+   margins preserve vertical scrolling when text scaling or a short window
+   makes the panel taller than the viewport. No animation delays interaction. */
+.stxu-login { box-sizing: border-box; width: min(100%, 440px); min-width: 0; margin: auto; padding: 36px; border: 1px solid var(--line-2); border-radius: 20px; background: var(--card); box-shadow: 0 12px 36px rgb(0 0 0 / 4%); }
+.stxu-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; }
+.stxu-brand .ic { width: 32px; height: 32px; flex: none; }
+.stxu-brand strong { font-size: 20px; font-weight: 600; letter-spacing: -.5px; }
+.stxu-login h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; line-height: 1.3; letter-spacing: -.5px; text-align: center; }
+.stxu-copy, .stxu-terms { font-size: 12px; line-height: 1.65; color: var(--muted); overflow-wrap: anywhere; }
+.stxu-login > .stxu-copy { margin: 0; text-align: center; }
+.stxu-copy + .stxu-copy { margin-top: 6px; }
+/* The panel itself is the surface: remove the old nested list border. Retain
+   native input semantics and the shared focus ring, disabled and busy states. */
+.stxu-login-form.list { display: flex; flex-direction: column; gap: 18px; margin: 28px 0 20px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.stxu-field { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 8px; font-size: 12px; font-weight: 500; color: var(--fg-2); }
+.stxu-field input.words { box-sizing: border-box; width: 100%; height: 42px; padding: 10px 12px; border-radius: 9px; font-size: 14px; font-weight: 400; }
+.stxu-code-row { display: flex; gap: 10px; align-items: flex-end; }
+.stxu-button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.stxu-login-form .stxu-send { flex: 0 0 auto; max-width: 48%; min-height: 42px; height: auto; padding: 9px 12px; border-radius: 9px; font-size: 12px; }
+.stxu-login-form > .stxu-button { align-self: stretch; width: 100%; min-height: 44px; height: auto; margin-top: 4px; padding: 11px 16px; border-radius: 9px; font-size: 14px; }
+.stxu-login > .stxu-button, .stxu-repair > .stxu-button { margin: 10px 6px 0 0; }
+.stxu-terms { margin: 0 0 12px; padding-top: 18px; border-top: 1px solid var(--line-2); text-align: center; font-size: 11px; }
+.stxu-terms .stxu-link { padding-inline: 2px; font-size: inherit; color: var(--fg-2); text-decoration: underline; text-underline-offset: 3px; }
+.stxu-signin > .stxu-terms:last-child { margin-bottom: 0; }
+.stxu-error, .stxu-notice { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--bg); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.stxu-error { color: var(--red); }
+.stxu-notice { color: var(--fg-2); }
+.stxu-identity { margin: 8px 0; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 500; }
+.stxu-repair { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+.stxu-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stxu-account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+/* Keep 16px outside the panel and a useful input width on small screens. The
+   form stays single-column and translated send-code labels may wrap freely. */
+@media (max-width: 600px) {
+  .stxu-gate { padding: 24px 16px; }
+  .stxu-login { padding: 28px 22px; border-radius: 16px; }
+  .stxu-brand { margin-bottom: 22px; }
+}

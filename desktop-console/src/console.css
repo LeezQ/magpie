@@ -1,0 +1,106 @@
+:root, :root.dark {
+  --background: var(--native-bg);
+  --foreground: var(--native-fg);
+  --card: var(--native-card);
+  --card-foreground: var(--native-fg);
+  --popover: var(--native-pop-bg);
+  --popover-foreground: var(--native-fg);
+  --primary: var(--native-accent);
+  --primary-foreground: var(--native-accent-fg);
+  --secondary: var(--native-pill);
+  --secondary-foreground: var(--native-fg-2);
+  --muted: var(--native-pill);
+  --muted-foreground: var(--native-ctl-fg);
+  --accent: var(--native-pill-hover);
+  --accent-foreground: var(--native-fg);
+  --destructive: var(--native-red);
+  --border: var(--native-line);
+  --input: var(--native-line);
+  --ring: var(--native-accent);
+  --brand: var(--native-accent);
+  --brand-foreground: var(--native-accent-fg);
+  --brand-muted: var(--native-accent-soft);
+  --night-relay: var(--native-fg);
+  --control-fog: var(--native-bg);
+  --relay-blue: var(--native-accent);
+  --healthy: var(--native-green);
+  --healthy-foreground: var(--native-green);
+  --success: var(--native-green);
+  --decision: var(--native-amber);
+  --decision-foreground: var(--native-amber);
+  --warning: var(--native-amber);
+  --fault: var(--native-red);
+  --fault-foreground: var(--native-red);
+  --chart-1: var(--native-c1);
+  --chart-2: var(--native-c2);
+  --chart-3: var(--native-c3);
+  --chart-4: var(--native-c4);
+  --chart-5: var(--native-c5);
+  --font-sans: var(--native-font);
+  --font-heading: var(--native-font);
+  --font-mono: var(--native-code);
+}
+html, body, #root { min-width: 0; min-height: 100%; }
+html, .font-sans, .font-heading { font-family: var(--native-font); }
+body {
+  margin: 0;
+  font-weight: var(--native-weight);
+  font-style: var(--native-style);
+  font-stretch: var(--native-stretch);
+}
+code, pre, kbd, .font-mono, .font-telemetry { font-family: var(--native-code); }
+/* Native navigation is the only sidebar; preserve the upstream content/header. */
+[data-slot="sidebar-trigger"] { display: none; }
+.desktop-console-main { min-width: 0; }
+/* Ordinary actions use the same quiet surface as native .text.action. */
+[data-slot="button"][data-variant="default"],
+[data-slot="button"][data-variant="outline"] {
+  background: var(--native-card);
+  color: var(--native-fg-2);
+  border-color: var(--native-line);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 4%);
+  font-weight: 500;
+}
+[data-slot="button"][data-variant="default"]:hover,
+[data-slot="button"][data-variant="outline"]:hover {
+  background: var(--native-card-2);
+  color: var(--native-fg);
+  border-color: var(--native-muted);
+}
+[data-slot="input"], [data-slot="select-trigger"] { background-color: var(--native-card); }
+[data-slot="avatar-fallback"] { background: var(--native-pill); color: var(--native-fg); }
+/* Desktop density comes from spacing, not a second zoom or smaller body text.
+   Keep the Web touch targets at narrow widths. */
+@media (min-width: 768px) and (pointer: fine) {
+  .desktop-console-main { padding: 20px; }
+  .desktop-console-main > .space-y-6 > :not(:last-child) { margin-block-end: 16px; }
+  [data-desktop-page-header] { padding-bottom: 14px; gap: 12px; }
+  [data-desktop-page-header] :is(h1, h2) { font-size: 22px; line-height: 1.25; }
+  [data-desktop-page-header] p { margin-top: 4px; line-height: 1.5; }
+  [data-slot="input"], [data-slot="select-trigger"][data-size="default"] {
+    height: 30px;
+    padding-block: 4px;
+    border-radius: 6px;
+  }
+  :is([data-slot="button"], button[data-variant]):is([data-size="default"], [data-size="sm"], [data-size="lg"]):not([data-variant="link"]) {
+    height: 30px;
+    min-height: 30px;
+    padding-block: 4px;
+    border-radius: 6px;
+  }
+  [data-slot="button"][data-size="icon"] { width: 30px; height: 30px; }
+  [data-testid="app-header"] { min-height: 52px; }
+  [data-testid="app-header"] > button { height: 36px; }
+  [data-testid="log-filter-surface"] { padding: 10px; gap: 8px; }
+  [data-slot="table-head"] { height: 32px; padding-inline: 10px; }
+  [data-slot="table-cell"]:not([colspan]) { padding: 6px 10px; }
+  [data-slot="table"] [data-slot="badge"] { height: 22px; padding-inline: 6px; }
+  [data-slot="card"] { padding-block: 16px; gap: 16px; }
+  [data-slot="card-header"], [data-slot="card-content"] { padding-inline: 16px; }
+  [data-slot="card-footer"] { padding: 12px 16px; }
+}
+:root[data-motion="reduce"] *, :root[data-motion="reduce"] *::before, :root[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

@@ -1,4 +1,4 @@
-// Package daemon runs `magpie serve` as a service of the user's own: a
+// Package daemon runs `stallionx serve` as a service of the user's own: a
 // systemd user unit on Linux, a launch agent on the Mac. The system starts
 // it at boot or login and starts it again when it stops, with no window
 // and no desktop session, for a server or a machine reached over SSH.
@@ -21,12 +21,13 @@ import (
 	"github.com/yetone/magpie/internal/agentenv"
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/autostart"
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/proc"
 )
 
-// Name is the service's name: magpie.service, com.yetone.magpie.serve.
-const Name = "magpie"
+// Name isolates the user service from an upstream magpie.service.
+const Name = brand.Slug
 
 // Status is what the system says of the service.
 type Status struct {
@@ -66,11 +67,11 @@ func current() (manager, error) {
 	case "darwin":
 		return launchd{}, nil
 	case "windows":
-		return nil, fmt.Errorf("%w on Windows: `magpie autostart on` opens magpie, with its gateway, when you log in; or run `magpie daemon install` inside WSL", ErrUnsupported)
+		return nil, fmt.Errorf("%w on Windows: `stallionx autostart on` opens magpie, with its gateway, when you log in; or run `stallionx daemon install` inside WSL", ErrUnsupported)
 	case "android":
-		return nil, fmt.Errorf("%w on Android: `magpie autostart on` starts the gateway at boot through Termux:Boot", ErrUnsupported)
+		return nil, fmt.Errorf("%w on Android: `stallionx autostart on` starts the gateway at boot through Termux:Boot", ErrUnsupported)
 	}
-	return nil, fmt.Errorf("%w on %s: run `magpie serve` under the system's own service manager", ErrUnsupported, goos)
+	return nil, fmt.Errorf("%w on %s: run `stallionx serve` under the system's own service manager", ErrUnsupported, goos)
 }
 
 // Options are what the service serves besides the gateway.
@@ -94,7 +95,7 @@ func Install(o Options) error {
 	// the app opened at login serves the gateway too: the two would take
 	// turns failing on the port
 	if autostartEnabled() {
-		return errors.New("magpie already opens at login and serves the gateway: run `magpie autostart off` first, or keep that instead")
+		return errors.New("magpie already opens at login and serves the gateway: run `stallionx autostart off` first, or keep that instead")
 	}
 	if o.Web != "" && o.Key == "" {
 		return errors.New("the page needs a key")
@@ -130,7 +131,7 @@ func serveArgs(o Options) []string {
 	return []string{"serve", webFlag + o.Web}
 }
 
-// webFlag is `magpie serve`'s, naming the page's address.
+// webFlag is `stallionx serve`'s, naming the page's address.
 const webFlag = "--web="
 
 // webKeyVar is the page's key in the service's environment.
@@ -282,7 +283,7 @@ func Get() (Status, error) {
 }
 
 // ErrNotInstalled is Start, Stop or Restart before Install.
-var ErrNotInstalled = errors.New("the magpie service isn't installed: `magpie daemon install`")
+var ErrNotInstalled = errors.New("the magpie service isn't installed: `stallionx daemon install`")
 
 func with(f func(manager) error) error {
 	m, err := current()
@@ -333,7 +334,7 @@ func pick(real, exe string) (string, error) {
 		return "", errors.New("move magpie to Applications first, then install the service")
 	}
 	if strings.Contains(real, string(filepath.Separator)+"go-build") {
-		return "", errors.New("this magpie is a build `go run` deletes when it ends: install magpie, then run `magpie daemon install` from it")
+		return "", errors.New("this magpie is a build `go run` deletes when it ends: install magpie, then run `stallionx daemon install` from it")
 	}
 	if p, err := exec.LookPath(Name); err == nil {
 		if abs, err := filepath.Abs(p); err == nil {

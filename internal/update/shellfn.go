@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/edit"
 )
 
@@ -53,8 +54,8 @@ var (
 
 var fnMu sync.Mutex
 
-func fnOpen(name string) string  { return "# >>> magpie " + name + " >>>" }
-func fnClose(name string) string { return "# <<< magpie " + name + " <<<" }
+func fnOpen(name string) string  { return "# >>> " + brand.Slug + " " + name + " >>>" }
+func fnClose(name string) string { return "# <<< " + brand.Slug + " " + name + " <<<" }
 
 // ShellFunction puts the function name, as body gives it for each shell,
 // in the profile of every shell the user has, or brings one there up to

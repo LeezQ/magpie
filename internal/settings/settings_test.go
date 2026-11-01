@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -57,7 +56,7 @@ func TestRoundTrip(t *testing.T) {
 	if Save(Settings{SessionTerminal: "Ghostty; rm -rf /"}) == nil {
 		t.Fatal("bad terminal app id accepted")
 	}
-	// the text size is the system's default until one of the sizes is chosen
+	// the text size is the client default until one of the sizes is chosen
 	if Save(Settings{}) != nil || Load().TextSize != DefaultTextSize() {
 		t.Fatalf("default text size: %+v", Load())
 	}
@@ -125,41 +124,44 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// A first fork launch must not import dial or create upstream magpie's
+// cache. An existing upstream installation must remain byte-identical too.
 func TestMigrate(t *testing.T) {
 	cfg, cache := t.TempDir(), t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", cfg)
 	t.Setenv("XDG_CACHE_HOME", cache)
-	old := filepath.Join(cfg, "dial")
-	if err := os.MkdirAll(filepath.Join(old, "sub"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(old, "providers.json"), []byte("{}"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(old, "sub", "x"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	Migrate()
-	fi, err := os.Stat(filepath.Join(cfg, "magpie", "providers.json"))
-	if err != nil || runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600 { // Windows has no such bits
-		t.Fatalf("providers.json not copied with its mode: %v %v", fi, err)
-	}
-	if _, err := os.Stat(filepath.Join(cfg, "magpie", "sub", "x")); err != nil {
-		t.Fatal("nested file not copied")
-	}
-	if _, err := os.Stat(old); err != nil {
-		t.Fatal("the old folder must stay")
-	}
-	if _, err := os.Stat(filepath.Join(cache, "magpie")); err == nil {
-		t.Fatal("no old cache, so no new one")
-	}
-	// a second run must not touch an existing folder
-	if err := os.WriteFile(filepath.Join(cfg, "magpie", "providers.json"), []byte("new"), 0o600); err != nil {
-		t.Fatal(err)
+	for _, root := range []string{cfg, cache} {
+		old := filepath.Join(root, "dial")
+		if err := os.MkdirAll(old, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(old, "sentinel"), []byte("dial"), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	Migrate()
-	if b, _ := os.ReadFile(filepath.Join(cfg, "magpie", "providers.json")); string(b) != "new" {
-		t.Fatal("existing folder overwritten")
+	for _, root := range []string{cfg, cache} {
+		for _, name := range []string{"magpie", "stallionx"} {
+			if _, err := os.Stat(filepath.Join(root, name)); !os.IsNotExist(err) {
+				t.Fatalf("migration created %s's folder: %v", name, err)
+			}
+		}
+		if b, err := os.ReadFile(filepath.Join(root, "dial", "sentinel")); err != nil || string(b) != "dial" {
+			t.Fatalf("dial's files changed: %q, %v", b, err)
+		}
+		upstream := filepath.Join(root, "magpie")
+		if err := os.MkdirAll(upstream, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(upstream, "sentinel"), []byte("magpie"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	Migrate()
+	for _, root := range []string{cfg, cache} {
+		if b, err := os.ReadFile(filepath.Join(root, "magpie", "sentinel")); err != nil || string(b) != "magpie" {
+			t.Fatalf("upstream's files changed: %q, %v", b, err)
+		}
 	}
 }
 
@@ -503,36 +505,32 @@ func TestAlertsChecked(t *testing.T) {
 	}
 }
 
-// Windows and Linux start at 110% (#914), the Mac at 100%; a size saved
-// before, 100% too, is kept on any of them.
+// Fresh installs and older settings without a size use the same larger
+// default on every platform. Explicit choices remain the user's own.
 func TestDefaultTextSize(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	orig := DefaultTextSize
-	t.Cleanup(func() { DefaultTextSize = orig })
-	for _, c := range []struct {
-		goos string
-		want int
-	}{{"windows", 110}, {"linux", 110}, {"darwin", 100}} {
-		DefaultTextSize = func() int { return c.want }
-		if err := os.Remove(Path()); err != nil && !os.IsNotExist(err) {
+	if got := DefaultTextSize(); got != 125 {
+		t.Fatalf("default text size %d, want 125", got)
+	}
+	if got := Load().TextSize; got != 125 {
+		t.Fatalf("nothing saved: text size %d, want 125", got)
+	}
+	if err := os.MkdirAll(Dir(), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(Path(), []byte(`{"theme":"dark"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	filememo.Forget()
+	if got := Load(); got.TextSize != 125 || got.Theme != "dark" {
+		t.Fatalf("older settings without text size: %+v", got)
+	}
+	for _, size := range []int{100, 110, 125, 150} {
+		if err := Save(Settings{TextSize: size}); err != nil {
 			t.Fatal(err)
 		}
-		filememo.Forget()
-		if got := Load().TextSize; got != c.want {
-			t.Fatalf("%s, nothing saved: text size %d, want %d", c.goos, got, c.want)
+		if got := Load().TextSize; got != size {
+			t.Fatalf("saved %d%% became %d%%", size, got)
 		}
-		if err := Save(Settings{TextSize: 100}); err != nil {
-			t.Fatal(err)
-		}
-		if got := Load().TextSize; got != 100 {
-			t.Fatalf("%s: a saved 100%% became %d", c.goos, got)
-		}
-	}
-	want := 100
-	if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
-		want = 110
-	}
-	if orig() != want {
-		t.Fatalf("on %s the default is %d, want %d", runtime.GOOS, orig(), want)
 	}
 }

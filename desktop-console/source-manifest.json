@@ -1,0 +1,26 @@
+{
+  "source": "../main/web",
+  "sourceTree": "2de747335689c7d29f97989ad2ed266e7dcc5ee85a39534d047bd901dd308ad8",
+  "publicTree": "ea257a67292872e222487f1c84031eb2adcf4dbb7b17d2192ab2b949c8138b86",
+  "package": "294ca40e9ecad528cf91d76132768b1c262102c22a26ce682b7d8d08fc305e3f",
+  "lock": "0bbd350313d93c2a029857199b489fc08f0522d354a589688f98d1b93142f4d6",
+  "seams": {
+    "App.jsx": "1ba84d75d7e84a6c7d16e5f05488d3db3ef4ee5192f28ca2fe6b8a7178fd0b81",
+    "components/layout/AppShell.jsx": "b42a6cce280ad472a7c9f5228885bc40b617c341f340378f58aa06ebea812dbc",
+    "contexts/AuthContext.jsx": "d66e69fc9912ce839e5211a9d12216a9741b7808045f05456e531a5509695e00",
+    "services/api.js": "e7919cdd56a0a9549b7a22c4acfdadbbd16fee7e36aa1d12e48e9058d762944b",
+    "components/layout/Header.jsx": "67d9c12a14e569baa715c17d72d48c2abd483f575166c36ee40244f11fd6e9df",
+    "components/ui/button.jsx": "e1c538ac0e390b00fb0b64d99898d2697c6dba92d75c51c3030386a34861688b",
+    "components/common/PageHeader.jsx": "7b75b059d84070dc9b67b06746b92ac05744ca8f299ba441e266892136dd2e43",
+    "pages/Token/TokenList.jsx": "44edc4795a7f8f31071459430dbaab45763970543d0e13b7ee034a7bf3190b77",
+    "pages/Token/TokenTable.jsx": "4a70c7536d51639075ad1c33f1d03e75dae1157050812bb0d447062063e26fa2",
+    "pages/Token/TokenSourcesDialog.jsx": "298d1def67023a1c867f0fd46fa51a5bf11543dbc278068ed78d50044381bb52",
+    "pages/Team/TeamAddMemberDialog.jsx": "a655b1eaadb464f1460e8fcd81322459b4025d7c51ed88ae5465db5729c070c4",
+    "pages/Models/ModelDetailDrawer.jsx": "4b207132350f658353d331f1a2e3371aedda4b2f8edef5d03bb655c0519e247a",
+    "pages/Log/LogTable.jsx": "dd9300850c839e225db6b5365ed2327aa12e77b77f6b289d6c348a2ce6e4fae6",
+    "pages/Log/LogFilters.jsx": "2dd1c9206ecbda418e6d5c832309920b78454b538ea3f36c450ce3e7be831746",
+    "pages/TopUp/index.jsx": "61957247a4b30c5471a2169cb0f9b5a9ff067b62b1f3167b796f7addb3d9b762",
+    "pages/Profile/index.jsx": "d7731f4738404bd3a9a7ce4b3325c00310d3726a3ee0b95706fd9522983a709d",
+    "pages/ApiReference/contexts/ApiConfigContext.jsx": "b0c1fdd9b62a413847cf3dc15207299892addbce69f98ee4b8fc239e210cdd22"
+  }
+}

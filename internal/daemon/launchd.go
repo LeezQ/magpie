@@ -6,14 +6,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/yetone/magpie/internal/brand"
 )
 
 // launchd runs the service as a launch agent of the user's: started at
 // login, and again when it stops with a failure.
 type launchd struct{}
 
-// Label is the launch agent's; the tray's at login is com.yetone.magpie.
-const Label = "com.yetone.magpie.serve"
+// Label is the launch agent's; the tray's at login is brand.BundleID.
+const Label = brand.ServeLabel
 
 func home() string {
 	h, _ := os.UserHomeDir()
@@ -24,7 +26,7 @@ func (launchd) file() string {
 	return filepath.Join(home(), "Library", "LaunchAgents", Label+".plist")
 }
 
-func logFile() string { return filepath.Join(home(), "Library", "Logs", "magpie", "serve.log") }
+func logFile() string { return filepath.Join(home(), "Library", "Logs", brand.Slug, "serve.log") }
 
 func (launchd) logs() string { return "tail -f " + strconv.Quote(logFile()) }
 
@@ -37,7 +39,7 @@ func plist(exe string, args, env []string) string {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Written by magpie daemon install; magpie daemon uninstall removes it. -->
+<!-- Written by stallionx daemon install; stallionx daemon uninstall removes it. -->
 <plist version="1.0">
 <dict>
 	<key>Label</key>` + s(Label) + `

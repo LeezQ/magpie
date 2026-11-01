@@ -61,7 +61,7 @@ func TestPortableSettings(t *testing.T) {
 
 	// without the data folder it's the profile again
 	appdir.UseExecutable("")
-	if got, want := Path(), filepath.Join(r, "home", ".config", "magpie", "settings.json"); got != want {
+	if got, want := Path(), filepath.Join(r, "home", ".config", "stallionx", "settings.json"); got != want {
 		t.Fatalf("installed Path() = %q, want %q", got, want)
 	}
 }
