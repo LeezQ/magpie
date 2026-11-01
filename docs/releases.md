@@ -144,6 +144,22 @@ Apple CloudKit 连接断开而失败，未形成完整 Release。0.1.1 仅加入
 32/32 通过；另两项是负载约 100 时 8 秒步骤超时，单独重跑各 3/3 通过。
 全仓库 Go 与 GUI 套件、网关整包均未在本机重跑。
 
+0.1.3 实际**没有发布**：Actions 运行 41337266255 中，Intel Mac 的 App
+staple 成功后，独立 `validate` 步骤连续五次遇到 CloudKit `-1005` 断连，
+重试预算用尽，`draft` 作业被跳过，没有生成 Release。标签
+`stallionx-v0.1.3` 保留不动，不复用该版本号。
+
+0.1.4（2026-11-02）是第三个安装验证预发布：包含 0.1.3 的全部内容，
+另加 StallionX 品牌蓝强调色（`stallionx-theme.css` 覆盖上游的颜色变量，
+不修改 `app.css`，详见 [StallionX client](subsystems/stallionx-client.md)）。
+参数与 0.1.2、0.1.3 相同：`installation_preview=true`、`sign_macos=true`；
+已知的 GUI 验收失败仍在，不是稳定版，不标记 Latest。本机运行记录见
+主题提交 dcdd775a2 的正文：`internal/gui`（nogui）整包测试通过，
+StallionX 样式、控制台和用户三个 GUI 文件共 90 项中 89 项通过；
+WebKit 的一个页面错误单独重跑 5/5 通过，原因未查明。全仓库 Go 与 GUI
+套件未在本机重跑。Intel Mac 的公证票据 `validate` 仍可能遇到同样的断连；
+若失败，只重跑失败的作业，不移动标签。
+
 ## 更新与验证状态
 
 本配置只管理安装包发布，**没有接入客户端自动更新**，也不会恢复 magpie
