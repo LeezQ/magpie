@@ -68,6 +68,11 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     }
     if (p === "/api/state") return json({ agents: [], profiles: [], settings, stallionxEnabled: true, updatesOff: true });
     if (p === "/api/settings") return json({ ...settings, version: "test", updatesOff: true });
+    // the provider editor's "requests at once" pills read the lanes every 2s
+    // while they show (refreshLanes in app.js), so a test that keeps the
+    // editor open past that, as a busy machine does, asks for them. The
+    // gateway's GET /api/lanes (providers.go) answers {} with nothing running.
+    if (p === "/api/lanes" && req.method() === "GET") return json({});
     if (p === "/api/providers") {
       f.providerReads.push(f.state);
       return json(providerList());
