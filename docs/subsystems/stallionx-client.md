@@ -444,16 +444,24 @@ passing the raw mux would leave browser development access unguarded.
 
 ## Dedicated frontend surface
 
-The dedicated window keeps Agents, Sessions, Library, the StallionX
-account/service page, Routing, Gateway, Usage and Masking, as requested by
-the user. Settings keeps General, Allowances, Network, Models, Privacy and
-About so those pages retain their configuration entry points. A fresh window is held behind the user gate until login/setup; successful
-login opens User center.
+The dedicated window keeps Agents, Providers (the StallionX account and its
+wallets), Masking and the StallionX user center, as requested by the user.
+Sessions, Library, Routing, Gateway and Usage are left out of the menu
+(2026-11-02). Each of them is still built and served, with its backend and
+saved settings, only not reachable from this frontend. Whatever app.js marks
+`data-feature="<page>"` for them goes too, as it does when that built-in
+feature is switched off. That covers the sidebar's gateway status, "Open
+Routing", "Make a routing group", the panel's Routing tab and "Open Usage",
+and Settings' session-terminal row. Settings › Models' "Give agents Magpie
+Image…" links to the Library are left out by `libWay`. Settings keeps
+General, Allowances, Network, Models, Privacy and About so those pages
+retain their configuration entry points. A fresh window is held behind the
+user gate until login/setup; successful login opens User center.
 `assets/stallionx-shell.js` owns the presentation allow-list, enabled by
 `boot.js` before the first paint. Old URLs and saved page/settings selections
 fall back to the account page or General; settings search cannot reveal hidden
-sections. The panel retains Routing; plugin recommendations and community
-pages/panels/actions are not mounted in this frontend.
+sections. Plugin recommendations and community pages/panels/actions are not
+mounted in this frontend.
 
 The model-service Providers page lists only StallionX: the personal provider and
 each team wallet turned on here (`stxUI.provider`). Clicking a row opens the existing

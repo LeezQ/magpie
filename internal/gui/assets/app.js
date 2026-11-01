@@ -21519,9 +21519,13 @@ function renderImages(s, keep) {
 }
 
 // libWay: a row's way to give agents magpie's own server name in the
-// Library, or to turn it on; none in gateway mode (#2091, matrix0487)
+// Library, or to turn it on; none in gateway mode (#2091, matrix0487), and
+// none in the StallionX client, which leaves the Library page out
+// (stallionx-shell.js): a link to it would open Providers instead. It isn't
+// marked data-feature="library", since it turns into "Turn on the Library"
+// exactly while that feature is off.
 function libWay(name, label, cls) {
-  if (gatewayMode) return [];
+  if (gatewayMode || !stxUI.view("library")) return [];
   const libOff = featuresOff.has("library");
   const go = el("button", "link " + cls, libOff ? t("Turn on the Library") : label);
   go.type = "button";

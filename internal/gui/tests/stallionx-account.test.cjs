@@ -62,11 +62,24 @@ for (const engine of engines) for (const lang of languages) for (const width of 
     assert.equal(await page.locator('#providers [data-id="other-service"]').count(), 0);
     assert.equal(await page.locator("#addProvider").isVisible(), false);
     assert.equal(await page.locator("#modal").isVisible(), false);
-    assert.deepEqual(await page.locator("#nav button[data-view]:visible").evaluateAll(nodes => nodes.map(n => n.dataset.view)), ["agents", "sessions", "library", "providers", "routing", "gateway", "usage", "masking", "stallion-wallet"]);
-    for (const destination of ["plugins", "community-test"]) {
+    assert.deepEqual(await page.locator("#nav button[data-view]:visible").evaluateAll(nodes => nodes.map(n => n.dataset.view)), ["agents", "providers", "masking", "stallion-wallet"]);
+    // Sessions, Library, Routing, Gateway and Usage are left out of the menu
+    // (stallionx-shell.js): an old link to one opens Providers
+    for (const destination of ["plugins", "community-test", "sessions", "library", "routing", "gateway", "usage"]) {
       await page.evaluate(v => show(v), destination);
       assert.equal(await page.locator("#view-providers").isVisible(), true, `${destination} stays hidden`);
     }
+    // and whatever opens one goes with it: the sidebar's gateway status, a
+    // control marked for one of those pages drawn later, the Library links
+    // in Settings › Models (libWay)
+    assert.deepEqual(await page.evaluate(() => {
+      const late = ["sessions", "library", "routing", "gateway", "usage"].map(id => {
+        const b = el("button", "text", id); b.dataset.feature = id;
+        $("#providers").append(b); // a list that shows; the page hides children it doesn't know
+        const shown = getComputedStyle(b).display !== "none"; b.remove(); return shown;
+      });
+      return { sideGw: stxUI.hides($("#sideGw")), late, libWay: libWay("magpie-vision", "x", "y").length };
+    }), { sideGw: true, late: [false, false, false, false, false], libWay: 0 });
     await page.evaluate(async () => { await show("settings"); setSetTab("plugins", true); });
     assert.equal(await page.locator("#setPage-general").isVisible(), true);
     assert.deepEqual(await page.locator("#setTabs [data-set]").evaluateAll(nodes => nodes.filter(n => !n.hidden).map(n => n.dataset.set)), ["general", "usage", "network", "models", "privacy", "about"]);
