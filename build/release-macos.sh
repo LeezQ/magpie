@@ -180,8 +180,9 @@ if [[ $SIGN_MACOS == true ]]; then
     codesign --verify --deep --strict --verbose=2 "$APP"
     ditto -c -k --sequesterRsrc --keepParent "$APP" "$STAGE/notarization.zip"
     notarize "$STAGE/notarization.zip" "$STAGE/app-notarization.json"
-    xcrun stapler staple "$APP"
-    xcrun stapler validate "$APP"
+    # The helper is loaded by absolute path; it never reads caller-controlled cwd.
+    source "$ROOT/build/staple-macos.sh"
+    staple_macos "$APP" "$STAGE/app-staple.log"
     codesign --verify --deep --strict --verbose=2 "$APP"
 fi
 
@@ -199,8 +200,7 @@ if [[ $SIGN_MACOS == true ]]; then
         --timestamp "$STAGE/$NAME.dmg"
     codesign --verify --strict --verbose=2 "$STAGE/$NAME.dmg"
     notarize "$STAGE/$NAME.dmg" "$STAGE/dmg-notarization.json"
-    xcrun stapler staple "$STAGE/$NAME.dmg"
-    xcrun stapler validate "$STAGE/$NAME.dmg"
+    staple_macos "$STAGE/$NAME.dmg" "$STAGE/dmg-staple.log"
     codesign --verify --strict --verbose=2 "$STAGE/$NAME.dmg"
 fi
 hdiutil verify "$STAGE/$NAME.dmg"

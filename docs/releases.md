@@ -115,6 +115,17 @@ Windows 脚本需要 Go、GNU make、Git、Python 3.11+，会下载固定版本
 首次运行需联网获取 Go 模块。签名模式必须由管理员主动设置相应环境变量。
 不要用 `make dev` 的输出作为公开下载包。
 
+## Apple 公证票据网络重试
+
+`build/staple-macos.sh` 用于 App 和 DMG：仅当 stapler 返回 68 且诊断包含
+`NSURLErrorDomain Code=-1005`（连接丢失）时重试，最多五次，间隔
+15/30/45/60 秒。其他失败、重试耗尽、票据 validate 失败仍阻止发布；
+签名和公证 Accepted 检查不变。离线验证：`bash build/staple-macos-test.sh`。
+
+0.1.0 的 Apple Silicon 与 Windows 已构建成功；Intel 在两次运行中因
+Apple CloudKit 连接断开而失败，未形成完整 Release。0.1.1 仅加入上述
+打包重试，不移动已有标签、不包含其他会话正在开发的未提交功能。
+
 ## 更新与验证状态
 
 本配置只管理安装包发布，**没有接入客户端自动更新**，也不会恢复 magpie
