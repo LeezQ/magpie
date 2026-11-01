@@ -3,12 +3,18 @@
 # transport failure, never a rejected/missing ticket or invalid local signature.
 # Both app and DMG stapling use the same bounded policy; validate stays mandatory.
 staple_macos() {
-    local artifact=$1 log=$2 attempt=1 status
+    # Validation also contacts CloudKit. Give each operation its own bounded
+    # retry budget; a successful staple must never bypass validation.
+    apple_ticket_action staple "$1" "$2" || return $?
+    apple_ticket_action validate "$1" "$2"
+}
+
+apple_ticket_action() {
+    local action=$1 artifact=$2 log=$3 attempt=1 status
     while :; do
-        if xcrun stapler staple "$artifact" > "$log" 2>&1; then
+        if xcrun stapler "$action" "$artifact" > "$log" 2>&1; then
             cat "$log"
-            xcrun stapler validate "$artifact"
-            return $?
+            return 0
         else
             status=$?
         fi

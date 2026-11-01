@@ -122,6 +122,11 @@ Windows 脚本需要 Go、GNU make、Git、Python 3.11+，会下载固定版本
 15/30/45/60 秒。其他失败、重试耗尽、票据 validate 失败仍阻止发布；
 签名和公证 Accepted 检查不变。离线验证：`bash build/staple-macos-test.sh`。
 
+0.1.2 补齐独立 `validate` 步骤的相同网络重试：staple 和 validate 各有
+最多五次预算，永久校验错误仍立即失败。0.1.1 已证明 staple 能恢复，但
+随后 validate 的 CloudKit 断连未被覆盖；新增回归在旧 helper 上失败、
+新 helper 上通过，包含 validate 持续失败时的次数上限。
+
 0.1.0 的 Apple Silicon 与 Windows 已构建成功；Intel 在两次运行中因
 Apple CloudKit 连接断开而失败，未形成完整 Release。0.1.1 仅加入上述
 打包重试，不移动已有标签、不包含其他会话正在开发的未提交功能。
