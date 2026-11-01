@@ -418,8 +418,9 @@ the workspace locked and shows a visible error with Refresh, not a blank page.
 The account module uses the original app's controls rather than a separate
 design kit: `.text.action`/`.text.primary` buttons, `input.words`, `segs()`
 segmented controls and `.list > .row.pref` account/detail rows. The original
-theme, platform font, focus treatment and browser-mobile touch sizing remain
-authoritative. The full-page login uses the plain application background with
+theme's neutrals, platform font, focus treatment and browser-mobile touch sizing
+remain authoritative; only the accent family is StallionX's own (see
+[StallionX accent theme](#stallionx-accent-theme---2026-11-02)). The full-page login uses the plain application background with
 one centered, 440px maximum-width panel, a centered wordmark and heading,
 42px inputs and a full-width 44px primary action. The form has no nested card.
 Only branding, form labels and required terms are shown in the normal state;
@@ -737,3 +738,25 @@ release or a claim that the earlier whole-repository acceptance reds are fixed.
   layouts. No payment, email, key mutation or account switch was submitted.
 - Not run: full repository Go/UI acceptance, native OS screenshot acceptance,
   Windows/Linux execution, old-WebKit execution, signed packaging or deployment.
+
+## StallionX accent theme - 2026-11-02
+
+- The accent family is the StallionX Web console's brand blue, laid over
+  upstream's tokens by `internal/gui/assets/stallionx-theme.css`, linked last
+  in `index.html`. `app.css` and every other upstream stylesheet are
+  unchanged, so upstream merges cannot conflict on the theme; the only shared
+  line is the `<link>` beside the other StallionX stylesheets. Retune by
+  editing that file; drop the theme by removing its `<link>`.
+- Only `--accent`, `--accent-soft`, `--accent-fg`, `--sel` and `--c1` change:
+  light `#2b55f0` on `#e7ecff`/`#e1e8fe` with white text, dark `#8aa0ff` on
+  `#202e52`/`#27355f` with `#08101f` text. The console's own `#315cff` is
+  deepened (and its dark `#7890ff` lightened) so accent text keeps 4.5:1 on the
+  page, cards, `--accent-soft` and `--sel`, as upstream's indigo did.
+  Backgrounds, cards, lines and text stay upstream's, so the native window
+  background, `theme-color` and `manifest.json` still match and launch does not
+  flash.
+- Each block repeats the selector of the `app.css` block it overrides (equal
+  specificity, later file wins). The colorblind series (`[data-colorblind]`,
+  one attribute more specific) and Omarchy's injected `:root.omarchy` style
+  still win over it. The embedded console follows automatically: its bridge
+  sends computed native tokens, and the usage canvas reads `--accent` at paint.

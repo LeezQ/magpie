@@ -1,0 +1,61 @@
+/* StallionX theme: the client's own accent, laid over upstream's tokens.
+
+   Why a file of its own: every colour in the GUI is a custom property set in
+   app.css (:root, its dark media query and [data-theme="dark"]), and the
+   pages, the tray panel, the usage canvas (plugins/usage/page.js reads
+   --accent) and the embedded account console (stallionx-console-entry.js
+   sends the computed tokens over the appearance bridge) all read them.
+   Overriding the tokens here, loaded after every other stylesheet in
+   index.html, re-colours all of it without editing a line of app.css, so an
+   upstream merge never conflicts on the theme. To retune the theme, change
+   the values below; to drop it, remove this file's <link> in index.html.
+
+   What changes: only the accent family (the primary button, focus rings,
+   links, the selected tab and row, the first chart series). Backgrounds,
+   cards, lines and text stay upstream's, so the native window's background
+   (lightweight.go winBg), index.html's theme-color and manifest.json still
+   match the page and nothing flashes at launch.
+
+   The hue is the StallionX Web console's brand blue (#315cff light, #7890ff
+   dark). Light is a touch deeper (#2b55f0) and dark a touch lighter
+   (#8aa0ff) so accent text keeps 4.5:1 on the page, a card, --accent-soft
+   and --sel, as upstream's indigo did; #315cff falls to 4.2:1 on --sel.
+
+   Precedence, kept on purpose:
+   - each block uses the same selector as the app.css block it replaces, so
+     equal specificity and the later file wins;
+   - the colorblind series (app.css, [data-colorblind="1"]) is one attribute
+     more specific, so a user who turned it on still gets Okabe-Ito --c1;
+   - Omarchy (omarchy.js) injects its theme as a <style> appended after
+     these links with :root.omarchy, so on Omarchy its own accent still
+     wins. */
+
+/* Light: also the default when the system is light and no theme is saved. */
+:root {
+  --accent: #2b55f0;      /* primary actions, focus rings, links, picked tab */
+  --accent-soft: #e7ecff; /* tinted fills behind accent text (chips, badges) */
+  --accent-fg: #ffffff;   /* text and icons drawn on a solid --accent fill */
+  --sel: #e1e8fe;         /* a selected row; a shade deeper than the soft fill */
+  --c1: #2b55f0;          /* first chart series follows the accent, as upstream's */
+}
+
+/* Dark from the system setting, unless the user picked Light in Settings. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #8aa0ff;
+    --accent-soft: #202e52;
+    --accent-fg: #08101f; /* dark ink on the light-blue fill, ~7.7:1 */
+    --sel: #27355f;
+    --c1: #8aa0ff;
+  }
+}
+
+/* Dark picked in Settings, whatever the system says. Same values as above;
+   app.css repeats its dark block the same way. */
+:root[data-theme="dark"] {
+  --accent: #8aa0ff;
+  --accent-soft: #202e52;
+  --accent-fg: #08101f;
+  --sel: #27355f;
+  --c1: #8aa0ff;
+}
