@@ -76,7 +76,11 @@ git push fork stallionx-v0.1.0
 账号测试并编译全套测试。Windows ARM64 包仍需要 ARM64 真机验证。
 全部六个包齐全、非空、文件名正确后才生成 SHA-256 清单。
 
-Release 始终是**草稿**，`latest=false`，不会自动公开或抢占 Latest。
+默认 Release 是**草稿**，`latest=false`，不会自动公开或抢占 Latest。
+仅在管理员明确选择 `installation_preview=true` 时，跳过 Go/GUI 验收测试，
+构建完成后直接公开为 **Prerelease**，仍不标记 Latest。此模式优先于
+`create_draft`，用于已知测试未通过时的安装验证；发布说明会明确测试豁免，
+不能称为稳定版。语法、格式、安装包完整性及请求的签名公证仍须通过。
 重复版本会失败，不会覆盖旧包。检查草稿里的版本说明、签名状态和全部附件，
 完成干净机器安装/卸载与登录测试后，管理员再点击 Publish release。
 将最高的正式版本标记为 Latest；旧版本补发时不要标记 Latest。
@@ -156,5 +160,19 @@ GitHub 托管 runner 构建成功，未配置证书时也无法验证 Apple 公�
   归档仍需按安装包内容白名单检查。
 - CI 固定 Bun 1.4.2 环境下，`internal/stallionx`、`internal/testenv`、
   `internal/netproxy` 的完整包 `-race` 检查均通过。
-- 完整 GUI 验证与 macOS 子进程责任失败调查仍在进行；最终验收记录需在
-  这些任务结束后补齐。以上不是绿灯或已公开发布声明。
+- macOS 子进程责任失败已定位为启动环境前提：同一个测试二进制从当前
+  非 GUI 进程树启动时，普通子进程已经各自负责自身，无法成立继承责任的
+  对照；通过 LaunchServices 启动临时应用时三个测试通过。将生产免责声明
+  位从 1 改成 0 的临时 overlay 会使真正的隔离断言失败；原代码 GUI 启动
+  `-race -count=20` 为 60 PASS、无失败/跳过。未修改生产代码或放宽测试，
+  未验证真实 TCC 弹窗；详见 [agent wiring](subsystems/agent-wiring.md)。
+- GUI 全套于 2026-11-02 被用户停止，保留日志记录了 2900 项结果：
+  2397 通过、503 失败，没有最终汇总；不能称为完整执行或通过。已确认
+  其中 About 测试仍断言上游域名 `usemagpie.ai`，而产品已改为
+  `x.stallion-api.run`；其他失败仍待分类与验证，不能统称为过时测试。
+- 2026-11-02：用户明确要求忽略未通过的验收项，直接推送并发布以测试
+  安装。首版使用 `installation_preview=true`，公开为非 Latest 的预发布，
+  不隐瞒失败，不删除测试；后续稳定版仍使用默认验收门禁。
+- 修复隔离、对齐 Bun 后，完整 Go 套件已在 LaunchServices 创建的应用
+  进程树中重新启动，尚待结果；此前全量失败不能记为通过。以上不是
+  绿灯或已公开发布声明。

@@ -13,6 +13,10 @@ on:
         description: 'Sign and notarize macOS (requires Apple secrets)'
         default: false
         type: boolean
+      installation_preview:
+        description: 'Explicit test waiver: skip acceptance suites and publish a non-Latest prerelease for installation testing'
+        default: false
+        type: boolean
       create_draft:
         description: 'Create a draft Release in THIS repository; false uploads Actions artifacts only'
         default: true
@@ -77,15 +81,24 @@ jobs:
           test -z "$(gofmt -l $(git ls-files '*.go'))"
           python3 -I build/release-assets.py --test
           bash -n build/release-macos.sh build/release-windows.sh
+      # A preview is an explicit owner waiver, never an implicit fallback on red.
+      # Packaging syntax/integrity and signing remain required in both modes.
+      - name: Acceptance Go suite
+        if: ${{ !inputs.installation_preview }}
+        shell: bash
+        run: |
+          set -euo pipefail
           go vet -tags nogui ./...
           go test -tags nogui -timeout 45m ./... 2>&1 | tee go-release-tests.log
           go test -race -tags nogui -timeout 45m ./internal/stallionx
       - name: Install pinned browser test runtime
+        if: ${{ !inputs.installation_preview }}
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/stx-browsers" --no-audit --no-fund playwright@1.58.2
           "$RUNNER_TEMP/stx-browsers/node_modules/.bin/playwright" install --with-deps chromium webkit
       - name: Full GUI suite in both engines
+        if: ${{ !inputs.installation_preview }}
         shell: bash
         env:
           NODE_PATH: ${{ runner.temp }}/stx-browsers/node_modules
@@ -121,6 +134,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Native account tests
+        if: ${{ !inputs.installation_preview }}
         run: go test -race -timeout 10m ./internal/stallionx
       - name: Package Mac app
         env:
@@ -164,6 +178,7 @@ jobs:
         shell: powershell
         run: choco install make --yes --no-progress
       - name: Native Windows checks
+        if: ${{ !inputs.installation_preview }}
         shell: bash
         run: |
           go test -run '^$' ./...
@@ -205,14 +220,15 @@ jobs:
           name: stallionx-complete-${{ needs.source.outputs.version }}
           path: release-assets/*
           if-no-files-found: error
-      - name: Create draft only, never replace an existing release
-        if: inputs.create_draft
+      - name: Create draft or explicitly requested installation prerelease
+        if: inputs.create_draft || inputs.installation_preview
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.source.outputs.tag }}
           VERSION: ${{ needs.source.outputs.version }}
           SHA: ${{ needs.source.outputs.sha }}
+          INSTALLATION_PREVIEW: ${{ inputs.installation_preview }}
         shell: bash
         run: |
           set -euo pipefail
@@ -223,5 +239,10 @@ jobs:
           printf '安装前请选择对应系统和架构。unsigned 文件未签名，仅供内测。\nWindows 需要 Microsoft Edge WebView2 Runtime。\n\n' >> notes.md
           printf 'Choose your OS and architecture. Files marked unsigned are unsigned test builds. Windows requires Microsoft Edge WebView2 Runtime.\n\n' >> notes.md
           printf 'Mac 签名状态见文件名；正式公开前需完成真机验证和版本说明。自动更新尚未接入，请手动下载更新。\nMIT and third-party notices are included. Verify downloads against SHA256SUMS.\n' >> notes.md
-          gh release create "$TAG" release-assets/* --verify-tag --draft --latest=false \
+          flags=(--draft)
+          if [[ "$INSTALLATION_PREVIEW" == true ]]; then
+            flags=(--prerelease)
+            printf '\n安装测试预发布：用户明确豁免验收测试。已有 Go/GUI 失败记录未全部解决；本次跳过验收测试，不是稳定版。请仅用于安装验证，不用于关键工作。\nInstallation preview: acceptance tests explicitly waived; known failures remain. Not a stable release.\n' >> notes.md
+          fi
+          gh release create "$TAG" release-assets/* --verify-tag "${flags[@]}" --latest=false \
             --title "StallionX $VERSION" --notes-file notes.md
