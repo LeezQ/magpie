@@ -1,0 +1,1 @@
+import{c as e,dt as t}from"./button-foQU0aMq.js";var n=t();function r({className:t,...r}){return(0,n.jsx)(`div`,{"data-slot":`skeleton`,className:e(`shimmer rounded-md bg-muted`,t),...r})}export{r as t};

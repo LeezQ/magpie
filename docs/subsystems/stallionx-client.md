@@ -92,6 +92,12 @@ model setup keeps recharge and an explicit retry/preservation-repair banner usab
 The Web header retains its right-side workspace switcher, personal balance/team
 wallet/member quota and recharge shortcut. Finance menus disappear in a team
 workspace: team funding uses the owner's transfer UI, not personal checkout.
+Both the profile team-list and team-wallet transfer dialogs show the available
+incoming personal balance and outgoing team balance together, using the existing
+authenticated account/team reads (`desktop-console/src/TeamTransferBalances.jsx`).
+Missing or invalid balances show unavailable, not zero; negative source balances
+offer zero and archived-wallet funding is capped at its remaining debt. These are
+display-only hints: transfer authorization and balance checks remain upstream.
 Request billing uses Web's inline expanded row, toggled by row click or a keyboard
 arrow control; key inspection still uses a dialog. OAuth binding, personal ZIP export/deletion
 and rich-media direct-key testing remain explicit Web handoffs; task inspection

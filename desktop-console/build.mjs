@@ -75,6 +75,32 @@ try {
   await patch('pages/Token/TokenTable.jsx', '      <Dialog\n        open={modelsDialogOpen}', '      <KeyDetails token={detailToken} onClose={() => setDetailToken(null)} />\n      <Dialog\n        open={modelsDialogOpen}')
   await patch('pages/Token/TokenSourcesDialog.jsx', 'get(`/api/token/${tokenId}/sources`', 'get(token.team_id ? `/api/team/${token.team_id}/tokens/${tokenId}/sources` : `/api/token/${tokenId}/sources`')
   await patch('pages/Team/TeamAddMemberDialog.jsx', "post('/api/user/verification', payload)", 'post(`/api/team/${teamId}/members/verification`, payload)')
+  for (const page of ['pages/Profile/ProfileTeams.jsx', 'pages/Team/TeamSettingsTab.jsx']) {
+    await patch(page, "import { formatCurrency } from '@/lib/utils'", "import { formatCurrency } from '@/lib/utils'\nimport TeamTransferBalances from '@/desktop/TeamTransferBalances'")
+  }
+  await patch('pages/Profile/ProfileTeams.jsx', `<p className="text-sm text-muted-foreground">
+            {/* 金额需要单独的等宽强调样式，用 Trans 承载而不把标记写进语言包 */}
+            <Trans
+              t={t}
+              i18nKey="teams.transfer.currentBalance"
+              values={{ amount: formatCurrency(team.balance) }}
+              components={{ amount: <span className="font-mono font-medium text-foreground" /> }}
+            />
+          </p>`, '<TeamTransferBalances team={team} />')
+  await patch('pages/Profile/ProfileTeams.jsx', "import { Trans, useTranslation } from 'react-i18next'", "import { useTranslation } from 'react-i18next'")
+  await patch('pages/Profile/ProfileTeams.jsx', '<div className="flex gap-2">', '<div className="flex flex-col gap-2 sm:flex-row">')
+  await patch('pages/Team/TeamSettingsTab.jsx', `<p className="text-sm text-muted-foreground">
+              {t('settings.transfer.dialog.currentBalance', { amount: formatCurrency(team.balance) })}
+            </p>`, '<TeamTransferBalances team={team} />')
+  for (const [locale, labels] of Object.entries({
+    en: { availableIn: 'Available to transfer in (personal balance)', availableOut: 'Available to transfer out (team balance)', unavailable: 'Unavailable' },
+    'zh-CN': { availableIn: '可划入（个人余额）', availableOut: '可划出（团队余额）', unavailable: '暂不可用' },
+  })) {
+    const file = `i18n/locales/${locale}/profile.json`
+    const value = JSON.parse(await readFile(join(stage, 'src', file), 'utf8'))
+    const anchor = `"currentBalance": ${JSON.stringify(value.teams.transfer.currentBalance)},`
+    await patch(file, anchor, anchor + '\n' + Object.entries(labels).map(([key, label]) => `      "${key}": ${JSON.stringify(label)},`).join('\n'))
+  }
   await patch('pages/Models/ModelDetailDrawer.jsx', "import PlaygroundPanel from '@/components/playground/PlaygroundPanel'", "import PlaygroundPanel from '@/desktop/ModelPlaygroundHandoff'")
   // Preserve Web's inline disclosure, with a keyboard-operable expand control.
   await patch('pages/Log/LogTable.jsx', '<TableCell className="w-8 px-2">', '<TableCell className="w-8 px-2"><button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" aria-label={t("billing.process") + ": " + log.request_id} aria-expanded={isExpanded} aria-controls={isExpanded ? `log-detail-${log.id}` : undefined} onClick={(event) => { event.stopPropagation(); toggleExpand(log.id) }}>')

@@ -49,7 +49,89 @@ async function consoleSetup(ctx, engine, lang, width, state = 'authenticated', o
     unsupported.push(p);
     return route.fulfill({status:501,json:{success:false,message:'Unmocked console API: '+p}});
   });
-  return {...env,requests,unsupported};
+  return {...env,requests,unsupported,account,team};
+}
+
+for (const engine of engines) for (const lang of ['en','zh','zh-TW','ja','de']) for (const width of [1280,390]) {
+  test(`${engine} ${lang} ${width}: team transfers show both available wallet balances`, async ctx => {
+    const {page,account,team,requests,unsupported,verify} = await consoleSetup(ctx,engine,lang,width);
+    const zh = lang.startsWith('zh');
+    await page.goto(origin+'/?view=stallion-wallet&account=%2Fprofile%2Fteams');
+    const frame = page.frameLocator('iframe.stxc-frame');
+    const openProfileTransfer = async () => {
+      await frame.getByTestId('profile-team-row').getByRole('button',{name:zh?'划转':'Transfer',exact:true}).click();
+    };
+    const checkBalances = async (incoming, outgoing) => {
+      const dialog = frame.getByRole('dialog');
+      const balances = dialog.locator('dl');
+      await expect(balances.locator('dt')).toHaveText(zh
+        ? ['可划入（个人余额）','可划出（团队余额）']
+        : ['Available to transfer in (personal balance)','Available to transfer out (team balance)']);
+      await expect(balances.locator('dd')).toHaveText([incoming,outgoing]);
+      assert.ok(await dialog.evaluate(e=>e.scrollWidth-e.clientWidth)<=1,'balance labels and amounts fit the dialog');
+      assert.ok(await frame.locator('html').evaluate(e=>e.scrollWidth-e.clientWidth)<=1,'dialog fits the viewport');
+      return dialog;
+    };
+    await openProfileTransfer();
+    let dialog = await checkBalances('$12.12','$20.50');
+    await dialog.getByRole('spinbutton').fill('1.00');
+    await dialog.getByRole('button',{name:zh?'划出到个人余额':'Out to personal balance',exact:true}).click();
+    await checkBalances('$12.12','$20.50');
+    await expect(dialog.getByRole('spinbutton')).toHaveValue('1.00');
+    if (process.env.STX_TRANSFER_SCREENSHOT && engine === 'chromium' && lang === 'zh') {
+      await dialog.screenshot({path:path.join(process.env.STX_TRANSFER_SCREENSHOT,`transfer-${width}.png`)});
+    }
+    await dialog.getByRole('button',{name:zh?'取消':'Cancel',exact:true}).click();
+    // Reopening after the server changes either wallet must not reuse the old snapshot.
+    account.balance = '0'; team.balance = '-2.00';
+    await page.reload();
+    await openProfileTransfer();
+    dialog = await checkBalances('$0.00','$0.00');
+    await dialog.getByRole('button',{name:zh?'取消':'Cancel',exact:true}).click();
+    account.balance = null; delete team.balance;
+    await page.reload();
+    await openProfileTransfer();
+    dialog = await checkBalances(zh?'暂不可用':'Unavailable',zh?'暂不可用':'Unavailable');
+    await dialog.getByRole('button',{name:zh?'取消':'Cancel',exact:true}).click();
+    account.balance = '12.123456'; team.balance = '20.50';
+    await page.reload();
+    await frame.locator('[data-testid="workspace-switcher"]').click();
+    await frame.getByRole('button').filter({hasText:'Fixture Team'}).click();
+    await page.locator('#nav [data-stx-route="/team/fixture-team/wallet"]').waitFor({state:'attached'});
+    await page.evaluate(() => document.querySelector('#nav [data-stx-route="/team/fixture-team/wallet"]').click());
+    await frame.getByRole('button',{name:zh?'划入团队钱包':'Transfer into team wallet',exact:true}).click();
+    dialog = await checkBalances('$12.12','$20.50');
+    await dialog.getByRole('button',{name:zh?'取消':'Cancel',exact:true}).click();
+    await frame.getByRole('button',{name:zh?'划出到个人余额':'Transfer out to personal balance',exact:true}).click();
+    await checkBalances('$12.12','$20.50');
+    assert.ok(requests.every(r=>r.method==='GET'),'inspecting balances never transfers money');
+    assert.deepEqual(unsupported,[]);
+    verify();
+  });
+}
+
+for (const engine of engines) {
+  test(`${engine}: archived team transfer hints respect debt and unknown balances`, async ctx => {
+    const {page,account,team,requests,unsupported,verify} = await consoleSetup(ctx,engine,'en',1280);
+    team.status = 3;
+    const frame = page.frameLocator('iframe.stxc-frame');
+    for (const [personal, wallet, incoming, outgoing, direction] of [
+      ['12.00','-2.00','$2.00','$0.00','in'],
+      ['1.00','-2.00','$1.00','$0.00','in'],
+      ['-1.00','-2.00','$0.00','$0.00','in'],
+      ['12.00','2.00','$0.00','$2.00','out'],
+      ['invalid','2.00','Unavailable','$2.00','out'],
+    ]) {
+      account.balance = personal; team.balance = wallet;
+      await page.goto(origin+'/?view=stallion-wallet&account=%2Fteam%2Ffixture-team%2Fwallet');
+      await frame.getByRole('button',{name:direction==='in'?'Transfer into team wallet':'Transfer out to personal balance',exact:true}).click();
+      await expect(frame.getByRole('dialog').locator('dd')).toHaveText([incoming,outgoing]);
+      await frame.getByRole('dialog').getByRole('button',{name:'Cancel',exact:true}).click();
+    }
+    assert.ok(requests.every(r=>r.method==='GET'));
+    assert.deepEqual(unsupported,[]);
+    verify();
+  });
 }
 
 for (const engine of engines) for (const lang of ['en','zh']) for (const layout of ['side','top']) {
