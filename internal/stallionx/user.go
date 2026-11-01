@@ -32,6 +32,9 @@ type UserStatus struct {
 	Profile           *UserProfile `json:"profile,omitempty"`
 	Message           string       `json:"message,omitempty"`
 	IsNew             bool         `json:"isNew,omitempty"`
+	// PayerReady: the personal wallet isn't set up, but a team payer is, so
+	// the workspace opens on the team's wallet (see payers.go).
+	PayerReady bool `json:"payerReady,omitempty"`
 }
 
 // UserProfile deliberately excludes role, invite relationships and credentials.
@@ -85,6 +88,19 @@ func setupReady(s saved) bool {
 	return connected(s) && s.Setup == "ready" && s.ModelCount > 0 && ok && len(models) > 0
 }
 
+// workspaceReady opens the workspace when any payer can serve requests: the
+// personal wallet, or a team enabled here. A member whose personal wallet is
+// empty works on the team's. It says which one made it ready.
+func workspaceReady(s saved) (ready, onTeam bool) {
+	if setupReady(s) {
+		return true, false
+	}
+	if teamReady(s) {
+		return true, true
+	}
+	return false, false
+}
+
 func userBase() UserStatus {
 	base := Base()
 	return UserStatus{State: "signed_out", Setup: "failed", Service: base, Terms: base + "/terms", Privacy: base + "/privacy"}
@@ -114,8 +130,9 @@ func userWithRetry(ctx context.Context, retries int) UserStatus {
 	out.ProviderConnected = connected(s)
 	out.SetupConflict = setupConflict(s)
 	out.SetupMessage = s.SetupMessage
-	if setupReady(s) {
-		out.Setup = "ready"
+	if ready, onTeam := workspaceReady(s); ready {
+		out.Setup, out.PayerReady = "ready", onTeam
+		out.ProviderConnected = out.ProviderConnected || onTeam
 	}
 	raw, requestErr := accountRequest(ctx, http.MethodGet, "/api/user/self", nil)
 	var profile UserProfile
@@ -155,8 +172,9 @@ func userWithRetry(ctx context.Context, retries int) UserStatus {
 	out.SetupConflict = setupConflict(now)
 	out.Setup = "failed"
 	out.SetupMessage = now.SetupMessage
-	if setupReady(now) {
-		out.Setup = "ready"
+	if ready, onTeam := workspaceReady(now); ready {
+		out.Setup, out.PayerReady = "ready", onTeam
+		out.ProviderConnected = out.ProviderConnected || onTeam
 	}
 	out.Profile = &profile
 	out.Email = profile.Email
@@ -223,7 +241,8 @@ func Access(ctx context.Context) UserStatus {
 	if err != nil {
 		return User(ctx)
 	}
-	key += fmt.Sprint(connected(savedAccount), setupReady(savedAccount))
+	ready, onTeam := workspaceReady(savedAccount)
+	key += fmt.Sprint(connected(savedAccount), ready, onTeam)
 	accessCache.Lock()
 	if key == accessCache.key && time.Now().Before(accessCache.until) {
 		out := cloneUser(accessCache.status)
@@ -247,7 +266,20 @@ var setupMu sync.Mutex
 func SyncAccount(ctx context.Context) UserStatus {
 	setupMu.Lock()
 	defer setupMu.Unlock()
-	return syncAccount(ctx)
+	out := syncAccount(ctx)
+	if out.State != "authenticated" {
+		return out
+	}
+	// the team payers enabled here, without creating a key; then the status
+	// again, since a team can be what makes the workspace ready
+	syncTeams(ctx)
+	invalidateAccess()
+	again := User(ctx)
+	if again.Setup != "ready" {
+		// keep the personal setup's own failure message
+		again.Setup, again.SetupMessage = out.Setup, firstOf(out.SetupMessage, again.SetupMessage)
+	}
+	return again
 }
 
 func syncAccount(ctx context.Context) UserStatus {

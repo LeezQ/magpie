@@ -31,5 +31,9 @@ const stxUI = (() => {
     view: (id) => !enabled || views.has(id),
     setting: (id) => !enabled || settings.has(id),
     hides: (node) => enabled && !!node?.closest(selector),
+    // The providers the account owns: the personal wallet's and each team
+    // wallet's turned on here (internal/stallionx/payers.go). Only these
+    // show on the Providers page.
+    provider: (id) => id === 'stallionx' || /^stallionx-team-[a-z0-9]+$/.test(id || ''),
   };
 })();

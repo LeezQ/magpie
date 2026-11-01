@@ -37,8 +37,9 @@ func stallionxWorkspaceGuard(next http.Handler, account func(context.Context) st
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Stripe checkout must also work while model setup needs credit.
-		if user.State == "authenticated" && stallionxCheckout(r) {
+		// Stripe checkout must also work while model setup needs credit, and
+		// so must choosing a team's wallet instead of the empty personal one.
+		if user.State == "authenticated" && (stallionxCheckout(r) || stallionxPayers(r)) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -79,6 +80,18 @@ func stallionxBeforeLogin(r *http.Request) bool {
 			u := stallionxOpenURL(r)
 			return u == stallionx.Base()+"/terms" || u == stallionx.Base()+"/privacy"
 		}
+	}
+	return false
+}
+
+// stallionxPayers are the payer routes (stallionxPayerRoutes): listing the
+// account's wallets and setting a team's up here.
+func stallionxPayers(r *http.Request) bool {
+	switch r.URL.Path {
+	case "/api/stallionx/payers":
+		return r.Method == http.MethodGet
+	case "/api/stallionx/payers/enable", "/api/stallionx/payers/remove", "/api/stallionx/payers/default":
+		return r.Method == http.MethodPost
 	}
 	return false
 }

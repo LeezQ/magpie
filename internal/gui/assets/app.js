@@ -6120,7 +6120,7 @@ function renderProviders(quiet) {
   // new-provider forms and imports stay out of the dedicated frontend.
   if (stxUI.enabled) {
     adding = false; importing = null; importingApps = null;
-    if (editing !== "stallionx") editing = null;
+    if (!stxUI.provider(editing)) editing = null;
   }
   if (accountArranging || providerArranging) { accountRenderPending = true; return; }
   providersBehind = false;
@@ -6138,7 +6138,7 @@ function renderProviders(quiet) {
   $("#foldOff").title = t(offFolded ? "Show the providers turned off" : "Fold the providers turned off away");
   let dialog = null; // the editor, if one is open
   for (const p of providers.providers) {
-    if (stxUI.enabled && p.id !== "stallionx") continue;
+    if (stxUI.enabled && !stxUI.provider(p.id)) continue;
     const list = p.off ? offList : onList;
     const open = editing === p.id;
     const row = el("div", "row provider" + (open ? " selected" : "") + (p.off ? " off" : ""));
@@ -14563,7 +14563,7 @@ function renderKeyAccounts(p) {
     // The dedicated account stores a keyList too. Offer explicit reveal here,
     // not only on the legacy single-key form. Never cache plaintext in provider
     // state or the editable draft; closing/redrawing the editor discards it.
-    if (stxUI.enabled && p.id === "stallionx") {
+    if (stxUI.enabled && stxUI.provider(p.id)) {
       const reveal = el("button", "text", t("Show"));
       let shown = null;
       reveal.onclick = async (e) => {

@@ -660,14 +660,17 @@ func AutoStandIn(id string) (string, bool) {
 		if len(f.AutoGroupSkip) == 0 || slices.ContainsFunc(f.Groups, func(g Group) bool { return g.ID == gid }) {
 			return "", false // not gone for skipping: removed, or the user's
 		}
-		all := autoGroups(foundFrom(entries, heldOffEntries()), heldSettings().ModelSameAs)
+		// a StallionX team payer is in no found group (unskipped), so a
+		// group only it made was never one to stand in for
+		all := autoGroups(unskipped(foundFrom(entries, heldOffEntries()), nil), heldSettings().ModelSameAs)
 		if !slices.ContainsFunc(all, func(g Group) bool { return g.ID == gid }) {
 			return "", false
 		}
 	}
 	var first string
 	for _, e := range entries {
-		if AutoGroupOf(e.Provider.ID, e.Model) != gid {
+		// never another wallet: a team payer doesn't stand in for a group
+		if AutoGroupOf(e.Provider.ID, e.Model) != gid || StallionXTeamPayer(e.Provider) {
 			continue
 		}
 		if !slices.Contains(f.AutoGroupSkip, e.Provider.ID) {
@@ -689,12 +692,24 @@ func foundGroups(entries []Entry) []Group {
 }
 
 // unskipped is entries without the models of the providers skip names:
-// those the user keeps out of found groups (AutoGroupSkip).
+// those the user keeps out of found groups (AutoGroupSkip), and without a
+// StallionX team payer's (StallionXTeamPayer), which is never in one.
 func unskipped(entries []Entry, skip []string) []Entry {
-	if len(skip) == 0 {
+	apart := func(e Entry) bool { return slices.Contains(skip, e.Provider.ID) || StallionXTeamPayer(e.Provider) }
+	if !slices.ContainsFunc(entries, apart) {
 		return entries
 	}
-	return slices.DeleteFunc(slices.Clone(entries), func(e Entry) bool { return slices.Contains(skip, e.Provider.ID) })
+	return slices.DeleteFunc(slices.Clone(entries), apart)
+}
+
+// StallionXTeamPayer says p is a StallionX team payer: the provider
+// "stallionx-team-…" a StallionX sign-in saves a team's key as. Each one is
+// a different wallet from the personal "stallionx" and from each other, and
+// a group magpie finds on its own fails over between its members, so a
+// request would be paid from a wallet the user didn't pick. A group the
+// user makes themselves can still hold one.
+func StallionXTeamPayer(p Provider) bool {
+	return p.Preset == StallionXPreset && strings.HasPrefix(p.ID, StallionXPreset+"-team-")
 }
 
 // AutoGroupSkip are the providers the user keeps out of the groups magpie

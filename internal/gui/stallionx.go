@@ -22,9 +22,14 @@ import (
 //	POST /api/stallionx/signout  → UserStatus
 //	POST /api/stallionx/sync     → UserStatus
 //	POST /api/stallionx/repair   {confirm:true} → UserStatus
+//	GET  /api/stallionx/payers           → PayerList (personal and each team)
+//	POST /api/stallionx/payers/enable    {id} → PayerList (sets a team up here)
+//	POST /api/stallionx/payers/remove    {id} → PayerList (takes it off here)
+//	POST /api/stallionx/payers/default   {id} → PayerList (the default payer)
 func stallionxRoutes(mux *http.ServeMux) {
 	stallionxWalletRoutes(mux)
 	stallionxConsoleRoutes(mux)
+	stallionxPayerRoutes(mux)
 	mux.HandleFunc("GET /api/stallionx/user", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
@@ -120,4 +125,50 @@ func serviceLocale(lang string) string {
 		return "zh-CN"
 	}
 	return "en"
+}
+
+// stallionxPayerRoutes serve who pays for this computer's requests: the
+// personal wallet and each team the account belongs to (stallionx/payers.go).
+// They stay open to a signed-in user whose personal setup failed (see
+// stallionxPayers in the guard), so a member with an empty personal wallet
+// can work on a team's instead.
+func stallionxPayerRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/stallionx/payers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		list, err := stallionx.ListPayers(ctx)
+		if err != nil {
+			log.Printf("stallionx: listing payers: %v", err)
+			fail(w, err)
+			return
+		}
+		writeJSON(w, list)
+	})
+	payerAction := func(name string, act func(context.Context, string) (stallionx.PayerList, error)) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			var in struct {
+				ID string `json:"id"`
+			}
+			if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&in); err != nil {
+				log.Printf("stallionx: the payer %s request's body: %v", name, err)
+				fail(w, err)
+				return
+			}
+			// provisioning a key, then reading its models
+			ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
+			defer cancel()
+			list, err := act(ctx, in.ID)
+			if err != nil {
+				log.Printf("stallionx: payer %s %q: %v", name, in.ID, err)
+				fail(w, err)
+				return
+			}
+			writeJSON(w, list)
+		}
+	}
+	mux.HandleFunc("POST /api/stallionx/payers/enable", payerAction("enable", stallionx.EnablePayer))
+	mux.HandleFunc("POST /api/stallionx/payers/remove", payerAction("remove", stallionx.RemovePayer))
+	mux.HandleFunc("POST /api/stallionx/payers/default", payerAction("default", stallionx.SetDefaultPayer))
 }

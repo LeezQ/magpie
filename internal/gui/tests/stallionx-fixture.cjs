@@ -21,6 +21,9 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     emptyLogs: false, logs: null, keys: null, orders: [], posts: [], userReads: [], providerReads: [], reads: [], unexpected: [],
     holdSignIn: null, holdRedeem: null, holdSetup: null, setupFail: false,
     guardWorkspace: false, blockedReads: [], accountID: "user_fixture", windows: [], assetFailure: "", setupConflict: false,
+    // payers (stallionx-payers.js): the account's teams, as payers.go lists
+    // them, whether the default question is still open, and the default
+    teams: [], payerAsk: false, defaultPayer: "personal",
   };
   const settings = { lang, theme, stallionxEnabled: true, ...(options.native ? { textSize: Math.round((options.zoom || 1) * 100) } : {}) };
   const provider = {
@@ -30,6 +33,14 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     models: [{ id: "fixture-model", name: "Fixture model", on: true }], agents: [], headers: {}, fallback: [],
   };
   const other = { id: "other-service", name: "Other service", models: [], agents: [], key: { set: true } };
+  // payers.go's list: the personal wallet, then each team
+  f.payerList = () => ({ ask: f.payerAsk && f.teams.length > 0, payers: [
+    { id: "personal", kind: "personal", providerId: "stallionx", enabled: true, state: f.setup === "ready" ? "ready" : "setup_failed", default: f.defaultPayer === "personal" },
+    ...f.teams.map(t => ({ id: t.id, kind: "team", name: t.name, role: t.role, providerId: "stallionx-" + t.id.replace("_", "-"), enabled: !!t.enabled, state: t.enabled ? "ready" : "not_enabled", default: f.defaultPayer === t.id, wallet: t.wallet })),
+  ] });
+  const teamProviders = () => f.teams.filter(t => t.enabled).map(t => ({ ...provider, id: "stallionx-" + t.id.replace("_", "-"), name: "StallionX · " + t.name }));
+  const providerList = () => ({ providers: (f.state === "signed_out" ? [other] : [provider, ...teamProviders(), other]), presets: [{ id: "other", name: "Other service" }], excluded: [],
+    gateway: { running: true, window: true, mine: true, url: "http://127.0.0.1:3999", calls: [], groups: [] } });
   const common = () => ({ service: "https://service.test", terms: "https://service.test/terms", privacy: "https://service.test/privacy", providerId: "stallionx" });
   f.user = () => ({ ...common(), state: f.state, setup: f.setup, setupMessage: f.setupMessage, setupConflict: f.setupConflict, providerConnected: f.state !== "signed_out",
     ...(f.state !== "signed_out" ? { email: f.email, username: "reader" } : {}),
@@ -59,10 +70,22 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     if (p === "/api/settings") return json({ ...settings, version: "test", updatesOff: true });
     if (p === "/api/providers") {
       f.providerReads.push(f.state);
-      return json({ providers: f.state === "signed_out" ? [other] : [provider, other], presets: [{ id: "other", name: "Other service" }], excluded: [],
-        gateway: { running: true, window: true, mine: true, url: "http://127.0.0.1:3999", calls: [], groups: [] } });
+      return json(providerList());
     }
     if (p === "/api/stallionx" && req.method() === "GET") return json(f.legacy());
+    if (p === "/api/stallionx/payers" && req.method() === "GET") return json(f.payerList());
+    if (p.startsWith("/api/stallionx/payers/") && req.method() === "POST") {
+      const body = req.postDataJSON() || {}; f.posts.push({ path: p, body });
+      const team = f.teams.find(t => t.id === body.id);
+      if (p.endsWith("/enable") || (p.endsWith("/default") && team)) {
+        if (!team) return bad("not a team id");
+        // a ready team wallet opens the workspace (user.go workspaceReady)
+        team.enabled = true; f.setup = "ready"; f.setupMessage = "";
+      }
+      if (p.endsWith("/remove") && team) team.enabled = false;
+      if (p.endsWith("/default")) { f.defaultPayer = body.id; f.payerAsk = false; }
+      return json(f.payerList());
+    }
     if (p === "/api/stallionx/user" && req.method() === "GET") {
       f.userReads.push(f.state);
       return f.userError ? bad(f.userError, 503) : json(f.user());

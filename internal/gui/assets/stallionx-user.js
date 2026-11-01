@@ -2,6 +2,12 @@
 let current = null, pending = null, generation = 0, busy = false, notice = '', error = '', resendAt = 0, resendTimer, wasReady = false;
 const listeners = new Set();
 let confirmRepair = false;
+// The wallets that can pay (stallionx-payers.js), shown in the setup gate so a
+// member whose personal wallet can't set up can work on a team's. One node,
+// kept across redraws of the gate.
+const payerBox = el('div', 'stxu-payers');
+payerBox.hidden = true;
+const payers = () => import('/stallionx-payers.js').then(() => window.stxPayers);
 const gate = el('section', 'stxu-gate');
 gate.id = 'stxUserGate';
 gate.setAttribute('aria-label', t('User center'));
@@ -23,7 +29,8 @@ function apply() {
   document.documentElement.classList.toggle('stx-user-locked', locked);
   gate.hidden = !locked;
   for (const node of document.body.children) {
-    if (node === gate || /^(SCRIPT|STYLE|LINK)$/.test(node.tagName)) continue;
+    // a payer's confirmation over the gate (stallionx-payers.js) stays usable
+    if (node === gate || node.matches('dialog.stxu-over') || /^(SCRIPT|STYLE|LINK)$/.test(node.tagName)) continue;
     if (locked) {
       if (!node.hasAttribute('data-stxu-inert')) node.setAttribute('data-stxu-inert', node.inert ? 'keep' : 'clear');
       node.inert = true;
@@ -33,7 +40,11 @@ function apply() {
   }
   draw(); emit();
   const nowReady = ready();
-  if (nowReady && !wasReady) queueMicrotask(() => load().catch(statusErr));
+  if (nowReady && !wasReady) queueMicrotask(() => {
+    load().catch(statusErr);
+    // the one-time question of which wallet is the default, for a team member
+    payers().then((p) => p.ask()).catch(statusErr);
+  });
   wasReady = nowReady;
 }
 async function request(path, body) {
@@ -148,6 +159,8 @@ function draw() {
       el('p','stxu-copy',current.setupMessage || ''),button('Retry setup',sync,true),
       button('Open user center',()=>openCenter().catch(e=>{error=e.message;draw();})),button('Sign out',signOut));
     if (current.setupConflict) box.append(repairControls());
+    box.append(payerBox);
+    payers().then((p) => p.mount(payerBox)).catch(statusErr);
   } else {
     // The wordmark already names the product; keep the heading focused on
     // the action instead of repeating StallionX in two adjacent lines.

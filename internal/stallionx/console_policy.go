@@ -301,7 +301,7 @@ func (s *consoleSession) authorize(ctx context.Context, method, path string, q u
 				return consoleRefused("The selected key belongs to a different workspace")
 			}
 		}
-		if (method == "PUT" || method == "DELETE") && keyHash(rawString(key["key"])) == s.account.KeyHash {
+		if (method == "PUT" || method == "DELETE") && (keyHash(rawString(key["key"])) == s.account.KeyHash || desktopTeamKey(s.account, key)) {
 			return consoleRefused("This key manages desktop access. Change its configuration through automatic setup recovery instead")
 		}
 	}

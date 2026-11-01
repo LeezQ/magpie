@@ -104,6 +104,15 @@ type saved struct {
 	Setup        string    `json:"setup,omitempty"`
 	SetupMessage string    `json:"setupMessage,omitempty"`
 	ModelCount   int       `json:"modelCount,omitempty"`
+	// Teams are the team payers enabled on this computer, by team public id
+	// (see payers.go). The personal payer is the fields above.
+	Teams map[string]teamSaved `json:"teams,omitempty"`
+	// DefaultPayer is the payer the user chose as the default: "" for the
+	// personal wallet, else a team public id.
+	DefaultPayer string `json:"defaultPayer,omitempty"`
+	// PayerAsked: the user has answered which payer is the default, so the
+	// question isn't asked again on the next sign-in.
+	PayerAsked bool `json:"payerAsked,omitempty"`
 }
 
 // mu keeps a sign-in and a sign-out from interleaving their writes of
@@ -144,6 +153,9 @@ type envelope struct {
 type serviceError struct {
 	status  int
 	message string
+	// reason is the service's machine-readable data.reason, when it gave one
+	// (POST /api/cli/provision does): code reads it, never the message.
+	reason string
 }
 
 func (e *serviceError) Error() string { return e.message }
@@ -206,8 +218,13 @@ func sessionRequest(ctx context.Context, method, base, path, token string, body,
 		if msg == "" {
 			msg = res.Status
 		}
-		log.Printf("stallionx: %s refused (%s): %s", path, res.Status, msg)
-		return &serviceError{status: res.StatusCode, message: msg}
+		var why struct {
+			Reason string `json:"reason"`
+		}
+		// data is absent or not an object on most refusals: no reason then
+		_ = json.Unmarshal(env.Data, &why)
+		log.Printf("stallionx: %s refused (%s): %s %s", path, res.Status, msg, why.Reason)
+		return &serviceError{status: res.StatusCode, message: msg, reason: why.Reason}
 	}
 	if out == nil || len(env.Data) == 0 {
 		return nil
@@ -309,6 +326,14 @@ func SignIn(ctx context.Context, email, code, inviteCode, locale string) (Status
 	s := saved{Email: firstOf(login.User.Email, email), Username: login.User.Username, Service: base, At: time.Now(), Setup: "failed", SetupMessage: "Account setup is incomplete"}
 	if old, e := readAccount(); e == nil && old.Service == base {
 		s.KeyHash = old.KeyHash
+		if strings.EqualFold(old.Email, s.Email) {
+			// the same account signing in again keeps its team payers and its
+			// answer to which one is the default
+			s.Teams, s.DefaultPayer, s.PayerAsked = old.Teams, old.DefaultPayer, old.PayerAsked
+		} else {
+			// another account's team keys must not stay usable under this one
+			removeTeamProviders(old)
+		}
 	}
 	if err := os.MkdirAll(appdir.Config(), 0700); err != nil {
 		mu.Unlock()
@@ -396,6 +421,11 @@ func SignOut() (Status, error) {
 		if err := provider.Delete(ProviderID); err != nil {
 			log.Printf("stallionx: removing signed-out model service: %v", err)
 		}
+	}
+	if readErr == nil && provider.FileError() == nil {
+		// every team payer's key goes with the account; one edited by hand
+		// (another key in it) isn't ours and stays
+		removeTeamProviders(s)
 	}
 	mu.Unlock()
 	if session.Refresh != "" && session.Service == Base() {

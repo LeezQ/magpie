@@ -242,6 +242,62 @@ Previous versions discarded session credentials; those users sign in once via
 the same global gate, not an extra billing login. A refresh outage is unavailable,
 not expired, and user data is not replaced with an empty successful response.
 
+### Payers: personal and team wallets
+
+An account pays from its personal wallet and from the wallet of each team it
+belongs to (`internal/stallionx/payers.go`). One payer is one wallet, one
+provider and one key, so the model an agent uses (`provider/model`) says who
+pays:
+
+- personal: the provider `stallionx`, set up by the sign-in as before;
+- a team: the provider `stallionx-team-<hex>` (the team's public id
+  `team_<hex>` with the underscore a dash, since provider ids take none),
+  named `StallionX · <team name>`. It is set up only when the user turns the
+  team on here (`POST /api/stallionx/payers/enable`, or choosing it as the
+  default). That asks `/api/cli/provision` with `team_id`, which creates the
+  account's `StallionX 客户端` key in the team on the team's default channel
+  group the first time. The team's owner and admins can see, disable or
+  delete it, and the confirmation says so.
+
+The background sync (`SyncAccount` → `syncTeams`) only reuses team keys
+(`reuse_only`): a key an admin deleted is never made again. A refused team
+provision's `data.reason` becomes the payer's state (`key_disabled`,
+`key_missing`, `not_team_member`, `team_disabled`, `team_disbanded`); the
+team's provider is left in place and nothing switches to another wallet on
+its own. The user moves their agents or removes the team. A team provider
+edited by hand is never overwritten (`conflict`) or removed.
+
+Payers never stand in for each other: `provider.StallionXTeamPayer` keeps
+every team provider out of the groups magpie finds (`unskipped`) and out of
+`AutoStandIn`, so no request fails over from one wallet to another. A group
+the user makes themselves can still hold one.
+
+`stallionx-account.json` keeps `teams` (per team: name, the key's hash and
+token id, last model count, state), `defaultPayer` ("" = personal) and
+`payerAsked`. Signing in again as the same account keeps them; another
+account's sign-in, and a sign-out, remove the team providers this account
+saved. Any ready payer opens the workspace (`workspaceReady`): a member whose
+personal wallet can't set up works on a team's, and `UserStatus.payerReady`
+says so. The console refuses to edit or delete a desktop team key, as it
+does the personal one.
+
+`GET /api/stallionx/payers` lists the personal wallet and every team, with
+role, state and what is left (`balance` for owners and admins,
+`member_quota` for members); `remove` and `default` take `{id}` like
+`enable`. The guard lets these four routes through for an authenticated user
+whose setup isn't ready, so the setup gate can offer a team's wallet. The
+frontend is `assets/stallionx-payers.js`: the payer list in the Providers
+account card and in the setup gate (shown only when the account is in a
+team), and a one-time question of which wallet is the default when the
+account is in at least one team and hasn't answered. Escape keeps the
+personal wallet and records the answer. That question is a native modal
+`<dialog>` (`.stxp-ask` in `stallionx-user.css`). app.css's
+`* { margin: 0 }` takes away the engine's centring of a dialog, so it
+places itself as `.action-confirm` does: centred, veiled, and on the Mac
+app below the traffic lights. `stallionx-payers.test.cjs` checks where it
+sits. The default payer's provider is put
+first in the provider order. There are no per-folder payer rules.
+
 ### Runtime authorization
 
 `internal/gui/stallionx_guard.go` protects workspace APIs and
@@ -399,7 +455,8 @@ fall back to the account page or General; settings search cannot reveal hidden
 sections. The panel retains Routing; plugin recommendations and community
 pages/panels/actions are not mounted in this frontend.
 
-The model-service Providers page lists only StallionX. Clicking its row opens the existing
+The model-service Providers page lists only StallionX: the personal provider and
+each team wallet turned on here (`stxUI.provider`). Clicking a row opens the existing
 provider editor, including the masked key (revealed only with Show) and model
 list/settings. Re-renders and direct edit links retain that editor. Generic
 Add/import/reorder controls and the first-use provider sheet remain hidden.

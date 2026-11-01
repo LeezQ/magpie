@@ -196,3 +196,37 @@ func TestStallionRequiredUserGuardsGUIHandler(t *testing.T) {
 		}
 	}
 }
+
+// A signed-in user whose personal wallet can't set up yet can still list
+// their wallets and pick a team's: the payer routes, by their own methods,
+// and nothing else of the workspace.
+func TestStallionSetupFailureCanChooseAPayer(t *testing.T) {
+	for _, state := range []string{"authenticated", "signed_out", "expired", "unavailable"} {
+		called := 0
+		h := stallionxWorkspaceGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called++
+			w.WriteHeader(http.StatusNoContent)
+		}), func(context.Context) stallionx.UserStatus { return stallionx.UserStatus{State: state, Setup: "failed"} })
+		for _, c := range []struct {
+			method, path string
+			open         bool
+		}{
+			{"GET", "/api/stallionx/payers", true},
+			{"POST", "/api/stallionx/payers/enable", true},
+			{"POST", "/api/stallionx/payers/remove", true},
+			{"POST", "/api/stallionx/payers/default", true},
+			{"POST", "/api/stallionx/payers", false},
+			{"GET", "/api/stallionx/payers/enable", false},
+			{"POST", "/api/stallionx/payers/other", false},
+			{"GET", "/api/providers", false},
+		} {
+			before := called
+			r := httptest.NewRecorder()
+			h.ServeHTTP(r, httptest.NewRequest(c.method, c.path, strings.NewReader(`{"id":"team_abc"}`)))
+			want := c.open && state == "authenticated"
+			if reached := called > before; reached != want || (want && r.Code != 204) {
+				t.Fatalf("%s: %s %s reached=%v code=%d", state, c.method, c.path, reached, r.Code)
+			}
+		}
+	}
+}

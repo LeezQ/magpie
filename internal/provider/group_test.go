@@ -138,3 +138,30 @@ func TestGroupSharesKimiFacts(t *testing.T) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
+
+// A StallionX team payer pays from a team's wallet, so it never joins a
+// group magpie finds: a request for the group would otherwise fail over
+// from the personal wallet onto the team's, or the other way.
+func TestStallionXTeamPayerJoinsNoFoundGroup(t *testing.T) {
+	e := func(p, preset, m string) Entry {
+		return Entry{ID: p + "/" + m, Model: m, Name: m, Provider: Provider{ID: p, Preset: preset}}
+	}
+	entries := []Entry{
+		e(StallionXPreset, StallionXPreset, "glm-5.3"),
+		e(StallionXPreset+"-team-abc", StallionXPreset, "glm-5.3"),
+		e("other", "", "glm-5.3"),
+	}
+	gs := autoGroups(unskipped(entries, nil), nil)
+	if len(gs) != 1 || len(gs[0].Members) != 2 {
+		t.Fatalf("groups: %+v", gs)
+	}
+	for _, m := range gs[0].Members {
+		if m == StallionXPreset+"-team_abc/glm-5.3" {
+			t.Fatalf("a team payer joined a found group: %+v", gs[0])
+		}
+	}
+	// only the preset's own team providers: one the user named alike is theirs
+	if StallionXTeamPayer(Provider{ID: StallionXPreset + "-team-abc", Preset: "openai"}) || StallionXTeamPayer(Provider{ID: StallionXPreset, Preset: StallionXPreset}) {
+		t.Fatal("StallionXTeamPayer matched a provider that isn't a team payer")
+	}
+}
