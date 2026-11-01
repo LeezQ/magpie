@@ -460,6 +460,10 @@ each team wallet turned on here (`stxUI.provider`). Clicking a row opens the exi
 provider editor, including the masked key (revealed only with Show) and model
 list/settings. Re-renders and direct edit links retain that editor. Generic
 Add/import/reorder controls and the first-use provider sheet remain hidden.
+An installed wallet's provider stays in the main list even when switched off,
+with the off badge and the existing on/off switch; it never moves into the
+generic off-provider fold that the dedicated shell hides. Showing or opening
+the row does not change its saved on/off state, key, models or payer default.
 File-read errors remain visible. Agent connection/model selection and Usage
 continue using their existing implementations, including built-in plugin code.
 

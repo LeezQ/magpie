@@ -5,6 +5,52 @@ const { test } = require("node:test");
 const { origin, email, engines, languages, tr, setup, fits, reach } = require("./stallionx-fixture.cjs");
 
 for (const engine of engines) for (const lang of languages) for (const width of [1100, 390]) {
+  test(`${engine} ${lang} ${width}: switched-off wallets stay visible and can be reopened`, async ctx => {
+    const { page, f, verify } = await setup(ctx, engine, lang, width, "authenticated");
+    f.teams = [{ id: "team_alpha", name: "Alpha", role: 3, enabled: true }];
+    f.providerOff = { stallionx: true, "stallionx-team-alpha": true, "other-service": true };
+    await page.goto(`${origin}/?view=providers`);
+    await page.waitForFunction(() => load.done && document.querySelector('#stxAccount .stxp-row[data-payer="team_alpha"]'));
+    const ids = ["stallionx", "stallionx-team-alpha"];
+    for (const id of ids) {
+      const row = page.locator(`#providers .row.provider[data-id="${id}"]`);
+      assert.equal(await row.isVisible(), true, `${id} remains visible when switched off`);
+      assert.equal(await row.locator(".badge.off").textContent(), await tr(page, "Switched off"));
+      assert.equal(await row.getByRole("switch").getAttribute("aria-checked"), "false");
+      await fits(page, row);
+      await reach(page, row); await row.click();
+      const editor = page.locator("#modal .editor"); await editor.waitFor();
+      assert.ok((await editor.textContent()).includes("Fixture model"), "disabled provider keeps its model editor");
+      await page.evaluate(() => cancelEdit());
+      await page.locator("#modal").waitFor({ state: "hidden" });
+    }
+    assert.equal(await page.locator('#view-providers .row.provider[data-id="other-service"]').count(), 0);
+    assert.deepEqual(f.posts, [], "showing closed providers never turns them on automatically");
+    for (const id of ids) {
+      const toggle = page.locator(`#providers .row.provider[data-id="${id}"]`).getByRole("switch");
+      await reach(page, toggle); await toggle.click();
+      await page.waitForFunction(id => document.querySelector(`#providers .row.provider[data-id="${id}"] .pswitch`)?.getAttribute("aria-checked") === "true", id);
+      assert.equal(await page.locator("#modal").isVisible(), false, "switch does not open the editor");
+    }
+    const personal = page.locator('#providers .row.provider[data-id="stallionx"]');
+    await reach(page, personal.getByRole("switch")); await personal.getByRole("switch").click();
+    await page.waitForFunction(() => document.querySelector('#providers .row.provider[data-id="stallionx"] .pswitch')?.getAttribute("aria-checked") === "false");
+    await page.reload();
+    // the workspace stays hidden behind the account gate (stx-user-locked in
+    // stallionx-user.js) until the user state answers, which can come after
+    // the providers list: wait for both before judging what shows
+    await page.waitForFunction(() => load.done && !document.documentElement.classList.contains("stx-user-locked")
+      && document.querySelector('#providers .row.provider[data-id="stallionx-team-alpha"]'));
+    assert.equal(await personal.isVisible(), true, "turning it off and reloading never hides it");
+    assert.equal(await personal.getByRole("switch").getAttribute("aria-checked"), "false");
+    assert.deepEqual(f.posts, [
+      { path: "/api/provider/on", body: { id: ids[0] } },
+      { path: "/api/provider/on", body: { id: ids[1] } },
+      { path: "/api/provider/off", body: { id: ids[0] } },
+    ]);
+    verify();
+  });
+
   test(`${engine} ${lang} ${width}: provider status links to user center and preserves model/key editing`, async ctx => {
     const { page, f, user, verify } = await setup(ctx, engine, lang, width, "authenticated");
     await page.goto(`${origin}/?view=providers`);

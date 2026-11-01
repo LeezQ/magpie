@@ -6139,7 +6139,9 @@ function renderProviders(quiet) {
   let dialog = null; // the editor, if one is open
   for (const p of providers.providers) {
     if (stxUI.enabled && !stxUI.provider(p.id)) continue;
-    const list = p.off ? offList : onList;
+    // The dedicated shell hides the generic off-provider fold. Keep its
+    // wallets in the main list even when off, with their state and switch.
+    const list = p.off && !stxUI.enabled ? offList : onList;
     const open = editing === p.id;
     const row = el("div", "row provider" + (open ? " selected" : "") + (p.off ? " off" : ""));
     row.dataset.id = p.id;
@@ -6202,9 +6204,8 @@ function renderProviders(quiet) {
     chev.append(svg(CHEV_R, 11, 1.7));
     // a provider on is listed, and tried, in the order the user puts it in
     // (#499): its logo is the handle, as an agent row's is
-    // Keep the service's key pill and detail affordance. Reordering and the
-    // provider-level on/off switch are unnecessary for the dedicated client.
-    if (stxUI.enabled) row.append(icon(p.icon || "generic"), who, uses, key, chev);
+    // Keep the service's key, editor and on/off control; only reordering is hidden.
+    if (stxUI.enabled) row.append(icon(p.icon || "generic"), who, uses, key, providerSwitch(p), chev);
     else row.append(p.off ? icon(p.icon || "generic") : providerHandle(p, row), who, uses, key, providerSwitch(p), chev);
     // right-click: Move to Top, Move Up, Move Down, Move to Bottom (#1614)
     if (!stxUI.enabled && !p.off) row.oncontextmenu = (ev) => { ev.preventDefault(); openProviderMenu(row.querySelector(".pv-handle"), p); };
@@ -6340,13 +6341,13 @@ function findProviders() {
     const hit = !p || !rest.length || hits.length;
     if (hits.length) row.querySelector(".who").append(el("div", "sub pv-hits", t("Serves {models}", { models: hits.join(", ") })));
     row.hidden = !hit;
-    if (hit) p?.off ? off++ : on++;
+    if (hit) p?.off && !stxUI.enabled ? off++ : on++;
   }
   // while searching, the ones off that match show, whatever the fold says
-  const fold = $("#foldOff"), offs = pvQuery ? off : providers.providers.filter((p) => p.off).length;
+  const fold = $("#foldOff"), offs = stxUI.enabled ? 0 : pvQuery ? off : providers.providers.filter((p) => p.off).length;
   fold.disabled = !!pvQuery;
   fold.setAttribute("aria-expanded", String(!!pvQuery || !offFolded));
-  $("#providers").hidden = pvQuery ? !on : offs === providers.providers.length;
+  $("#providers").hidden = stxUI.enabled || pvQuery ? !on : offs === providers.providers.length;
   $("#offHead").hidden = !offs;
   $("#offProviders").hidden = !offs || !pvQuery && offFolded;
   $("#offCount").textContent = offs || "";

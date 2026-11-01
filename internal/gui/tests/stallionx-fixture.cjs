@@ -23,7 +23,7 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     guardWorkspace: false, blockedReads: [], accountID: "user_fixture", windows: [], assetFailure: "", setupConflict: false,
     // payers (stallionx-payers.js): the account's teams, as payers.go lists
     // them, whether the default question is still open, and the default
-    teams: [], payerAsk: false, defaultPayer: "personal",
+    teams: [], payerAsk: false, defaultPayer: "personal", providerOff: {},
   };
   const settings = { lang, theme, stallionxEnabled: true, ...(options.native ? { textSize: Math.round((options.zoom || 1) * 100) } : {}) };
   const provider = {
@@ -39,7 +39,7 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     ...f.teams.map(t => ({ id: t.id, kind: "team", name: t.name, role: t.role, providerId: "stallionx-" + t.id.replace("_", "-"), enabled: !!t.enabled, state: t.enabled ? "ready" : "not_enabled", default: f.defaultPayer === t.id, wallet: t.wallet })),
   ] });
   const teamProviders = () => f.teams.filter(t => t.enabled).map(t => ({ ...provider, id: "stallionx-" + t.id.replace("_", "-"), name: "StallionX · " + t.name }));
-  const providerList = () => ({ providers: (f.state === "signed_out" ? [other] : [provider, ...teamProviders(), other]), presets: [{ id: "other", name: "Other service" }], excluded: [],
+  const providerList = () => ({ providers: (f.state === "signed_out" ? [other] : [provider, ...teamProviders(), other]).map(p => ({ ...p, off: !!f.providerOff[p.id] })), presets: [{ id: "other", name: "Other service" }], excluded: [],
     gateway: { running: true, window: true, mine: true, url: "http://127.0.0.1:3999", calls: [], groups: [] } });
   const common = () => ({ service: "https://service.test", terms: "https://service.test/terms", privacy: "https://service.test/privacy", providerId: "stallionx" });
   f.user = () => ({ ...common(), state: f.state, setup: f.setup, setupMessage: f.setupMessage, setupConflict: f.setupConflict, providerConnected: f.state !== "signed_out",
@@ -70,6 +70,11 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     if (p === "/api/settings") return json({ ...settings, version: "test", updatesOff: true });
     if (p === "/api/providers") {
       f.providerReads.push(f.state);
+      return json(providerList());
+    }
+    if (["/api/provider/on", "/api/provider/off"].includes(p) && req.method() === "POST") {
+      const body = req.postDataJSON(); f.posts.push({ path: p, body });
+      f.providerOff[body.id] = p.endsWith("/off");
       return json(providerList());
     }
     if (p === "/api/stallionx" && req.method() === "GET") return json(f.legacy());
