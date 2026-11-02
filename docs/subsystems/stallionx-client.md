@@ -32,9 +32,22 @@ new Command-Q confirmation replaces the Mac Quit role item with its own. Its
 label goes through `stxBranded` (`internal/gui/stallionx.go`), so it still
 reads "Quit StallionX" without changing upstream's tray words or their tests.
 Upstream's new `notes-mirror.yml` runs on `yetone/magpie` alone, as
-`docker.yml` does. Upstream's `/api/usage/checkin-account` has no CLI entry
-in `internal/cli/settings_parity_test.go` on upstream either, and is left for
-upstream.
+`docker.yml` does. Upstream's `/api/usage/checkin-account` had no CLI entry
+in `internal/cli/settings_parity_test.go` on upstream either; upstream added
+it in the next merge.
+
+On 2026-11-03 the branch merged 84 more upstream commits, to `8abdf53a8`. Four
+files conflicted, each with additions on both sides, and each keeps both:
+imports in `internal/cli/main.go` and `internal/provider/presets.go`, the
+StallionX translations beside upstream's new scroll strings in `i18n.js`, and
+the gateway's handler chain in `internal/gateway/gateway.go`. The chain keeps
+upstream's new `headerLogged` outside `holdCatalog` and the fork's
+`stallionxRequired` inside `callerGuard`. Upstream's new
+`internal/provider/picks_legacy_test.go` wrote `providers.json` to a
+hard-coded `~/.config/magpie`; it now uses `settings.Dir()`, the app's own
+folder (`~/.config/stallionx` here), which is the same folder upstream.
+Upstream's automatic backups (`internal/backup`) are written under
+`settings.Dir()` too, so they stay in StallionX's folder.
 
 The missing console bridge functions are now implemented. Both the isolated Web
 bundle and native developer binary build. The current console architecture and

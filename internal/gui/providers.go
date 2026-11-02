@@ -1236,6 +1236,9 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				writeJSON(rw, map[string]any{
 					"requestBody": c.RequestBody, "responseBody": c.ResponseBody,
 					"requestTruncated": c.RequestTruncated, "responseTruncated": c.ResponseTruncated,
+					// the headers both ways, the client's and each upstream
+					// request's, masked (usrname1833 on Discord)
+					"headers": c.Headers(),
 				})
 				return
 			}
@@ -1796,6 +1799,11 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				if !in.PromptAsWritten && old != nil {
 					in.PromptAsWritten = old.PromptAsWritten
 				}
+				// and that magpie filled the Gemini URL in once, which the
+				// form doesn't send: a URL cleared in it stays cleared
+				if !in.GeminiFilled && old != nil {
+					in.GeminiFilled = old.GeminiFilled
+				}
 				// and additional_tools taken, set with `magpie provider
 				// set <id> additional-tools=on` (#2660)
 				if !in.AdditionalTools && old != nil {
@@ -1965,7 +1973,8 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				provider.ForgetPlanQuotas()
 			}
 			// a new key means a new vendor list is worth a try; keep it short
-			if p, err := provider.Find(in.ID); err == nil && p.Ready() {
+			// (not for one switched off, which is asked nothing)
+			if p, err := provider.Find(in.ID); err == nil && p.Ready() && !p.Off {
 				ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 				// and each key it didn't have before is given the models
 				// its own list has, beside it (PrefillNewKeys)
@@ -2506,7 +2515,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 		// key's isn't asked (#76), so until then a relay that hands out a
 		// key per group would send the key nothing, or everything
 		if a := r.PathValue("action"); a == "add" || a == "import" || a == "on" || a == "plan" {
-			if p, err := provider.Find(in.ID); err == nil && p.Ready() && (len(p.KeysOn()) > 1 || a == "plan") {
+			if p, err := provider.Find(in.ID); err == nil && p.Ready() && !p.Off && (len(p.KeysOn()) > 1 || a == "plan") {
 				ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 				// and a key added is given the models its own list has
 				// beside it, in the same wait (Young on Discord)

@@ -400,6 +400,14 @@ func (s *shim) ready() error {
 	// being drawn again, and nothing then draws it once more
 	shownAt := map[string]time.Time{}
 	pressed := map[string]int{}
+	// the folder the trust question is about, for the reason a run that
+	// ends on it gives: "showed no prompt" said nothing of the question
+	// a saved account's reads waited out on (#4830, mydosu)
+	folder, _ := os.Getwd()
+	if folder == "" {
+		folder = "the folder it runs in"
+	}
+	asking := "asked whether to trust " + folder + ", not answered"
 	onboard := func(screen, key string) error {
 		if shownAt[screen].IsZero() {
 			shownAt[screen] = time.Now()
@@ -419,6 +427,11 @@ func (s *shim) ready() error {
 	for {
 		p := s.plain()
 		words := strings.Join(strings.Fields(p), " ")
+		doing := "showed no prompt"
+		if strings.Contains(p, "trust this folder") {
+			doing = asking
+		}
+		s.doing.Store(doing)
 		switch {
 		case strings.Contains(p, "trust this folder") && os.Getenv(TrustEnv) != "1":
 			return errUntrusted
@@ -489,7 +502,8 @@ func (s *shim) ready() error {
 			if prompted {
 				return fmt.Errorf("Claude Code showed its prompt, but hadn't listed the tools of magpie's tool server in %s", readyWait)
 			}
-			return fmt.Errorf("Claude Code showed no prompt in %s: %s", readyWait, s.lastScreen())
+			doing, _ := s.doing.Load().(string)
+			return fmt.Errorf("Claude Code %s in %s: %s", doing, readyWait, s.lastScreen())
 		}
 	}
 }
@@ -624,7 +638,7 @@ func (s *shim) command(name string) error {
 		return err
 	}
 	by := time.After(commandWait)
-	last, quiet := "", time.Now()
+	last, quiet, drawn := "", time.Now(), false
 	for waiting := true; waiting; {
 		p := s.plain()
 		if p != last {
@@ -632,8 +646,14 @@ func (s *shim) command(name string) error {
 		}
 		// drawn: its windows, and the panel still a moment; or anything
 		// else (an error, a plan with no allowance) still for longer
+		// Claude Code draws itself again first (its banner, the folder,
+		// the prompt's rules), which stays still while a slow /usage
+		// loads: told as the panel, its banner was read as an allowance
+		// (ikunbots on X, v0.1.2738). Anything else is waited for only
+		// once the panel's tabs are drawn, and not loading.
 		still := time.Since(quiet)
-		if strings.TrimSpace(p) != "" && (usageUsed.MatchString(p) && still >= commandSettle || still >= 3*commandSettle) {
+		if usageUsed.MatchString(p) && still >= commandSettle || usageDrawn(p) && still >= 3*commandSettle {
+			drawn = true
 			break
 		}
 		select {
@@ -646,15 +666,30 @@ func (s *shim) command(name string) error {
 		}
 	}
 	_, _ = io.WriteString(s.pty, "\x1b")
+	if !drawn {
+		s.emit(map[string]any{"type": "result", "subtype": "error_during_execution", "is_error": true, "session_id": s.sid,
+			"result": fmt.Sprintf("Claude Code hadn't drawn /usage's panel in %s: %s", commandWait, s.lastScreen())})
+		return nil
+	}
 	s.emit(map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": s.sid,
 		"local_command": "usage", "result": usageText(last)})
 	return nil
 }
 
+// usageDrawn is /usage's panel drawn and loaded: the tabs of the Settings
+// it opens in ("Settings  Status  Config  Usage  Stats", Claude Code
+// 2.1.316), with nothing still loading.
+func usageDrawn(screen string) bool {
+	t := strings.Join(strings.Fields(screen), " ")
+	return usagePanel.MatchString(t) && !usageLoading.MatchString(t)
+}
+
 var (
-	usageName  = regexp.MustCompile(`^(session|week(?: \([^)]*\))?)`)
-	usageUsed  = regexp.MustCompile(`([0-9.]+)%\s+used`)
-	usageReset = regexp.MustCompile(`Resets (.*?\))`)
+	usageName    = regexp.MustCompile(`^(session|week(?: \([^)]*\))?)`)
+	usageUsed    = regexp.MustCompile(`([0-9.]+)%\s+used`)
+	usageReset   = regexp.MustCompile(`Resets (.*?\))`)
+	usagePanel   = regexp.MustCompile(`\bSettings\b.*\bUsage\b`)
+	usageLoading = regexp.MustCompile(`(?i)\bloading\b`)
 )
 
 // usageText is the plan's allowance as /usage's panel shows it, each

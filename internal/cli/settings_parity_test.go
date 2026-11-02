@@ -188,6 +188,7 @@ var notYet = map[string]string{
 	"GET /api/state":                             W,  // api.go
 	"POST /api/agents/{action}/{id}":             A,  // api.go
 	"POST /api/agents/arrange":                   W,  // api.go
+	"POST /api/agents/here":                      A,  // api.go
 	"POST /api/agents/cli/{id}":                  A,  // api.go
 	"POST /api/agents/disconnect-offline/{id}":   A,  // api.go
 	"POST /api/agents/rescan":                    A,  // api.go
@@ -247,6 +248,8 @@ var notYet = map[string]string{
 	"POST /api/usage/arrange":                    W,  // api.go
 	"POST /api/warm-now":                         A,  // api.go
 	"POST /api/window/{action}":                  W,  // api.go
+	"GET /api/autobackup":                        S2, // backup.go: Back up by itself
+	"POST /api/autobackup/{action}":              S2, // backup.go
 	"GET /api/archive":                           S2, // archive.go
 	"GET /api/archive/file":                      S2, // archive.go
 	"POST /api/archive/export":                   S2, // archive.go
@@ -383,6 +386,7 @@ var notYet = map[string]string{
 	"GET /api/usage/quotas/history/holds":        U,  // usage.go
 	"GET /api/usage/requests":                    U,  // usage.go
 	"GET /api/usage/requests/content":            U,  // usage.go
+	"POST /api/usage/checkin-account":            U,  // usage.go: one account now; `magpie accounts checkin` does every account
 	"POST /api/usage/clear":                      U,  // usage.go
 	"POST /api/usage/codex-reset":                U,  // usage.go
 	"POST /api/usage/deleted":                    U,  // usage.go
