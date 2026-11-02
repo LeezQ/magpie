@@ -23,6 +23,13 @@ do not require Node or the sibling repository. Rebuild after syncing Web changes
   immutable team ID and require real membership, regardless of platform role.
 - Lists mask keys; an explicit copy retrieves the owned/authorized team key.
   The desktop-managed key is read-only here to prevent accidental loss of access.
+- Copies go to the native parent. The app's window refuses the frame's own
+  `navigator.clipboard`, so `bridge.js` replaces `writeText` once (no Web page
+  is patched). It posts `stx-console-copy` and waits up to 10 seconds for an
+  answer. The parent (`stallionx-console-entry.js`) accepts it only from the
+  frame's origin and only as a non-empty string of at most 64 KiB. It copies
+  the way app.js `copy()` does, `POST /api/copy` first, and answers
+  `stx-console-copied`. Each page keeps its own success and failure toasts.
 - Mutations are not replayed, and paid SSE is never retried. Abort/account
   replacement closes the upstream stream. Finance stays authoritative upstream.
 - Native sidebar entries are individual routes. Header, forms, tables and team

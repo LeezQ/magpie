@@ -73,6 +73,57 @@ export async function consoleFetch(raw, init = {}) {
   return response
 }
 
+// Copying. Inside the app's window WKWebView refuses (or leaves undefined) the
+// page's own navigator.clipboard, which is why magpie's native pages copy
+// through POST /api/copy first (app.js copy()). The Web pages here call
+// navigator.clipboard.writeText directly, in 16 places: an API key, a request
+// ID, an invitation code, a model name. The key copy is the worst case, as it
+// awaits the full key from the BFF first, and WebKit drops the click's
+// permission to write the clipboard across that wait. So writeText is replaced
+// once, here, rather than patching each page: the text goes to the native
+// parent over the bridge, which writes the system clipboard the way magpie's
+// own pages do and answers whether it worked. Each page keeps its own success
+// and failure toasts, since the replacement resolves or rejects like the real
+// writeText.
+const COPY_LIMIT = 64 << 10 // the parent refuses more; no console value is near it
+const COPY_TIMEOUT = 10000 // a parent that never answers fails the copy, never hangs it
+const pendingCopies = new Map() // copy id -> settle(ok), until the parent answers
+let copySerial = 0
+// The browser's own writeText, for a frame not (yet) joined to a native parent,
+// e.g. the bundle opened on its own while developing.
+const browserWriteText = navigator.clipboard?.writeText?.bind(navigator.clipboard)
+
+function bridgeWriteText(text) {
+  if (!parentOrigin) {
+    return browserWriteText ? browserWriteText(text) : Promise.reject(new DOMException('Clipboard unavailable', 'NotAllowedError'))
+  }
+  const value = String(text)
+  if (value.length > COPY_LIMIT) return Promise.reject(new DOMException('Text too long to copy', 'DataError'))
+  const id = ++copySerial
+  return new Promise((resolve, reject) => {
+    const settle = (ok) => {
+      clearTimeout(timer)
+      pendingCopies.delete(id)
+      if (ok) resolve()
+      else reject(new DOMException('The desktop app could not copy this text', 'NotAllowedError'))
+    }
+    const timer = setTimeout(() => settle(false), COPY_TIMEOUT)
+    pendingCopies.set(id, settle)
+    postParent('stx-console-copy', { id, text: value })
+  })
+}
+
+// Install the replacement. Clipboard.writeText is an ordinary prototype method,
+// so an own property on the instance shadows it; a frame that isn't a secure
+// context has no navigator.clipboard at all, and gets one with writeText only.
+try {
+  if (navigator.clipboard) navigator.clipboard.writeText = bridgeWriteText
+  else Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: bridgeWriteText } })
+} catch (error) {
+  // Copies then fail with the page's own "copy failed" toast, as before.
+  console.error('[desktop bridge] could not route copies to the desktop app:', error)
+}
+
 export function isConsoleRoute(path) {
   if (typeof path !== 'string' || path.length > 2048 || /[\\\r\n]/.test(path)) return false
   return /^(?:\/(?:personal\/(?:dashboard|token|log|balance-log)|profile(?:\/teams)?|team(?:\/[a-zA-Z0-9_-]+(?:\/(?:overview|tokens|playground|models|logs|usage|members|wallet|activity|settings))?)?|join\/[a-zA-Z0-9_-]+|topup(?:\/result)?|orders|balance-log|playground|models|notifications|subscription|my-subscription|token|log|dashboard|api-reference(?:\/[a-zA-Z0-9_-]+)?|terms|privacy|refund-policy|status|403)?)(?:[?#].*)?$/.test(path)
@@ -98,6 +149,12 @@ window.addEventListener('message', (event) => {
     return
   }
   if (event.origin !== parentOrigin) return
+  // The parent's answer to a bridgeWriteText copy: settle that copy's promise.
+  // An unknown or already-settled id (a late answer after the timeout) is ignored.
+  if (data.type === 'stx-console-copied') {
+    pendingCopies.get(data.id)?.(data.ok === true)
+    return
+  }
   if (!['stx-console-navigate', 'stx-console-session', 'stx-console-refresh', 'stx-console-appearance'].includes(data.type)) return
   if (data.type === 'stx-console-appearance') Object.assign(bootstrap, { theme: data.theme, resolvedTheme: data.resolvedTheme, tokens: data.tokens, reducedMotion: data.reducedMotion, locale: data.locale })
   if (data.type === 'stx-console-session' && ['signed_out', 'expired'].includes(data.user?.state)) expireSession()

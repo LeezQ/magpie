@@ -19,6 +19,19 @@ const userIdentity = u => u?.state === 'authenticated' ? [u.service, u.profile?.
 function send(type, values = {}) {
   if (frame && origin) frame.contentWindow.postMessage({...values, type}, origin);
 }
+// copyForFrame writes text the console frame asked to copy (bridge.js
+// bridgeWriteText) to the system clipboard, and says whether it is there.
+// The frame's own navigator.clipboard is refused in the app's window, so this
+// takes the same ways app.js copy() does, in its order: magpie's native
+// POST /api/copy (which reads the clipboard back where it can), then this
+// page's clipboard API (a browser tab on `magpie web`), then the copy command.
+// The frame shows its own toast, so nothing is shown here.
+async function copyForFrame(text) {
+  const res = await fetch('/api/copy', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})}).catch(() => null);
+  if (res?.ok) return true;
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  return typeof copyByCommand === 'function' && copyByCommand(text);
+}
 function appearance() {
   const root = document.documentElement, style = getComputedStyle(root), body = getComputedStyle(document.body);
   const theme = root.dataset.theme || 'system', tokens = {};
@@ -174,6 +187,20 @@ window.addEventListener('message', event => {
         const p = new URLSearchParams(location.search); p.set('account', route); history.replaceState(null, '', '?' + p);
       }
       break;
+    case 'stx-console-copy': {
+      // Only the frame and its origin reach here (checked above). The text is
+      // a bounded non-empty string, as bridge.js sends; anything else is
+      // answered as a failed copy, so the frame's page shows "copy failed"
+      // instead of waiting for its timeout. The id only pairs the answer.
+      const id = data.id, text = data.text;
+      if (!Number.isSafeInteger(id)) return;
+      if (typeof text !== 'string' || !text || text.length > 65536) { send('stx-console-copied', {id, ok:false}); break; }
+      copyForFrame(text).then(ok => send('stx-console-copied', {id, ok}), error => {
+        console.error('[StallionX console] copy failed:', error);
+        send('stx-console-copied', {id, ok:false});
+      });
+      break;
+    }
     case 'stx-console-auth-expired':
       clearConsole(); stxUser.refresh(); break;
     case 'stx-console-signout':

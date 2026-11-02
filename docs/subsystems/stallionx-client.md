@@ -760,3 +760,30 @@ release or a claim that the earlier whole-repository acceptance reds are fixed.
   one attribute more specific) and Omarchy's injected `:root.omarchy` style
   still win over it. The embedded console follows automatically: its bridge
   sends computed native tokens, and the usage canvas reads `--accent` at paint.
+
+## Console copies through the native clipboard - 2026-11-02
+
+- Reported: copying an API key in the embedded user center showed "复制失败"
+  (Copy failed). The console's request helper toasts any failed non-silent
+  request, and the screenshot showed only the copy toast, so the key read
+  (`GET /api/token/{id}` through the BFF) succeeded. The failing step was the
+  frame's own `navigator.clipboard.writeText`. The app's window refuses that
+  API, which is why upstream's own pages copy through `POST /api/copy` first
+  (app.js `copy()`). The key copy also awaits the key read before writing, and
+  WebKit drops a click's clipboard permission across that wait.
+- `desktop-console/src/bridge.js` replaces `navigator.clipboard.writeText` in
+  the frame once. Every console copy (16 Web call sites: keys, request IDs,
+  invitation codes, model names) goes to the parent as `stx-console-copy`.
+  `stallionx-console-entry.js` accepts it only from the frame's origin, only
+  as a non-empty string of at most 64 KiB. It copies the way app.js does
+  (`/api/copy`, then the page clipboard API, then the copy command) and
+  answers `stx-console-copied`. The frame rejects after 10 seconds without an
+  answer, so a page shows its own failure toast instead of hanging. No Web
+  page is patched. The bundle was rebuilt from the pinned Web commit
+  `f11bbf5e`: a rebuild before the change was byte-identical to the committed
+  bundle, and after it, with hashes stripped, only the chunk holding the
+  bridge differs.
+- The parent cannot tell whether a copy followed a click. A frame able to send
+  this message can put text on the clipboard. It is the same first-party
+  bundle that already holds the account capability, on its own loopback
+  origin.

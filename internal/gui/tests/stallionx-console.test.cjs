@@ -6,6 +6,7 @@ const { setup, engines, origin } = require('./stallionx-fixture.cjs');
 const { expect } = require('playwright/test');
 const consoleOrigin = 'http://127.0.0.1:49731';
 const keyID = 'key_0123456789abcdef0123456789abcdef';
+const fullKey = 'sk-fixture-whole-secret-only-1234';
 
 async function consoleSetup(ctx, engine, lang, width, state = 'authenticated', options = {}) {
   const env = await setup(ctx, engine, lang, width, state, 'light', {console:true,...options});
@@ -36,6 +37,8 @@ async function consoleSetup(ctx, engine, lang, width, state = 'authenticated', o
     if (p === '/api/channel-group/') return reply({items:[{id:'cgroup_fixture',name:'Standard',status:1,is_default:true,discount_rate:'1'}],total:1,total_pages:1});
     if (p === '/api/user/self/discounts') return reply([]);
     if (p === '/api/pricing/public') return reply([]);
+    // an explicit copy reads the one key whole (TokenList's resolveKey), as the BFF serves it
+    if (p === '/api/token/'+keyID || p === '/api/team/team_fixture/tokens/'+keyID) return reply({id:keyID,user_id:account.id,team_id:p.includes('/team/')?team.id:'',name:'Fixture API Key',key:fullKey,status:1});
     if (p === '/api/token/' || p === '/api/team/team_fixture/tokens') return reply({items:[{id:keyID,user_id:account.id,team_id:p.includes('/team/')?team.id:'',name:'Fixture API Key',key:'****1234',status:1,quota:'0',used_amount:'0.000001',period_type:'',period_quota:'0',channel_group_ids:['cgroup_fixture'],created_at:'2026-10-01T00:00:00Z'}],total:1});
     if (p === '/api/log/self' || p === '/api/team/team_fixture/logs') return reply({items:[{id:'log_fixture',request_id:'request_fixture',model:'fixture-model',token_name:'Fixture API Key',token_id:keyID,created_at:'2026-11-01T01:00:00Z',status:1,cost:'0.000001',prompt_tokens:12,completion_tokens:3,cache_read_tokens:4,cache_creation_tokens:2,usage_known:true,group_discount_rate:'1',request_time:1200,first_byte_time:120,is_stream:true,billing_type:'token',input_price:'1.25',output_price:'10',request_path:'/v1/chat/completions',client_ip:'127.0.0.1'}],total:1});
     if (p.endsWith('/logs/summary') || p === '/api/log/self/summary') return reply({total_requests:1,total_cost:'0.000001'});
@@ -279,6 +282,44 @@ async function nativeAppearance(page, frame) {
   const font = await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily);
   assert.equal(await frame.locator('body').evaluate(e=>getComputedStyle(e).fontFamily),font,'native font follows into the frame');
   assert.equal(await frame.locator('html').evaluate(e=>getComputedStyle(e).zoom),'1','no second text-size zoom');
+}
+
+// The app's window refuses the page's own clipboard API (WKWebView; app.js
+// copy() and POST /api/copy exist for it), so a key copied in the console went
+// nowhere and the page said "Copy failed". Every frame here has its
+// navigator.clipboard refused the same way, and the key must reach the system
+// clipboard through the native parent's /api/copy, whole, with the page's own
+// success toast; when no native way copies, the page says so instead of hanging.
+for (const engine of engines) for (const lang of ['en','zh']) {
+  test(`${engine} ${lang}: a copied key reaches the native clipboard`, async ctx => {
+    const {page,requests,unsupported,verify} = await consoleSetup(ctx,engine,lang,1280);
+    await page.addInitScript(() => {
+      // WKWebView's refusal: no navigator.clipboard (not a secure context), or one that refuses
+      if (window.Clipboard) Object.defineProperty(Clipboard.prototype, 'writeText', {configurable:true, writable:true, value:() => Promise.reject(new DOMException('refused by the fixture', 'NotAllowedError'))});
+    });
+    const copies = [];
+    let nativeCopy = true;
+    await page.route(origin+'/api/copy', route => {
+      copies.push(JSON.parse(route.request().postData()).text);
+      return route.fulfill(nativeCopy ? {status:204} : {status:501, body:''});
+    });
+    await page.goto(origin+'/?view=stallion-wallet&account=%2Fpersonal%2Ftoken');
+    const frame = page.frameLocator('iframe.stxc-frame');
+    await frame.getByText('Fixture API Key',{exact:true}).waitFor();
+    const copy = frame.getByRole('button',{name:lang==='zh'?'复制密钥':'Copy key',exact:true});
+    await copy.click();
+    await frame.getByText(lang==='zh'?'密钥已复制到剪贴板':'Key copied to clipboard',{exact:true}).waitFor();
+    assert.deepEqual(copies,[fullKey],'the whole key, once, through magpie\'s native copy');
+    assert.ok(requests.some(r => r.method === 'GET' && r.path === '/api/token/'+keyID),'the key is read only for the explicit copy');
+    // No native way copies: the parent's /api/copy, clipboard API and copy command all fail.
+    nativeCopy = false;
+    await page.evaluate(() => { document.execCommand = () => false; });
+    await copy.click();
+    await frame.getByText(lang==='zh'?'复制失败':'Copy failed',{exact:true}).waitFor();
+    assert.deepEqual(copies,[fullKey,fullKey]);
+    assert.deepEqual(unsupported,[]);
+    verify();
+  });
 }
 
 for (const engine of engines) for (const lang of ['en','zh']) for (const width of [1280,390]) {
