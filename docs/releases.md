@@ -168,6 +168,25 @@ WebKit 的一个页面错误单独重跑 5/5 通过，原因未查明。全仓�
 记录见这两个提交的正文；全仓库 Go 与 GUI 套件未在本机重跑，也未连真实
 服务端修改 Key。
 
+0.1.6（2026-11-02）是第五个安装验证预发布：0.1.5 的全部内容，加上合并的
+136 个上游提交（`d1a94f579` 到 `ce2e81da1`，合并提交 0494332a1 和
+836ffb20f），其中包括上游的「有 Agent 连着时退出先确认」。Mac 应用菜单的
+退出项仍显示「Quit StallionX」。参数同前：`installation_preview=true`、
+`sign_macos=true`，不标记 Latest。本机运行记录见两个合并提交的正文：
+StallionX GUI 296 项中 295 项通过，另一项是负载下的 8 秒超时，单独重跑
+3/3 通过；`internal/stallionx`、`gui`、`settings`、`brand`、`appdir`、
+`agent` 整包通过。已知未通过、但不是合并引入的：
+- `internal/cli` 的路由清单测试：上游新增的 `/api/usage/checkin-account`
+  在上游同样缺条目，留给上游修。
+- macOS 的 `TestClosingWindowMarksPageOutOfSight`：上游自己的 AppKit
+  测试偶发失败，0.1.5 的提交上 CI 红过一次。它用的代码和测试与上游
+  完全相同，本机上游代码 0/6 失败、合并后 1/8 失败。原因未查明，
+  也未提 issue。
+- 上游的 i18n-keys、plugin-authors-listing GUI 测试：分别与内嵌用户中心
+  的文案、StallionX 品牌名冲突，合并前已红。
+- `internal/plugin` 的两个 Git 更新测试：只在本机 Bun 1.3.14 上失败，
+  换 CI 的 Bun 1.4.2 整包通过。
+
 ## 更新与验证状态
 
 本配置只管理安装包发布，**没有接入客户端自动更新**，也不会恢复 magpie
