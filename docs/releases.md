@@ -186,6 +186,11 @@ StallionX GUI 296 项中 295 项通过，另一项是负载下的 8 秒超时，
   的文案、StallionX 品牌名冲突，合并前已红。
 - `internal/plugin` 的两个 Git 更新测试：只在本机 Bun 1.3.14 上失败，
   换 CI 的 Bun 1.4.2 整包通过。
+- 网关的 `TestCodexPoolSaysTheClientsVersion`：合并后 CI 在 macOS 和
+  Ubuntu 上都红。原因是上游 1ff928139 新加的 Lite 测试经 Codex 路由发
+  `codex/0.165.0`，留在 `codexSeen` 里没有清掉，这个测试随后就按 0.165.0
+  发请求。和那几个测试一起跑能在本机复现，单独跑通过。上游已有 issue
+  （yetone/magpie#4807），留给上游修，fork 不改上游测试。
 
 ## 更新与验证状态
 
