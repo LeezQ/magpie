@@ -151,6 +151,11 @@ function fixture(lang, initial = "signed_out", theme = "light", options = {}) {
     if (p === "/api/usage/quotas") return json([]);
     if (p === "/api/usage") return json({});
     if (p === "/api/usage/quotas/history") return json([]);
+    // upstream's Settings reads the automatic backup setup (autobackup.js,
+    // backup.AutoView); a fresh install's, with none made. Its actions
+    // (/api/autobackup/<action>) stay unanswered, so a test that set one off
+    // fails as unexpected traffic.
+    if (p === "/api/autobackup" && req.method() === "GET") return json({ on: false, hours: 24, keep: 7, dir: "~/.config/stallionx/auto-backups", custom: false, backups: [] });
     if (["/api/update", "/api/upstream-status", "/api/login/usage", "/api/fonts", "/api/browser-access", "/api/plugins/updates",
       "/api/plugin-panels", "/api/davsync", "/api/cli", "/api/gateway/trace", "/api/upstream", "/api/importapps/discovery",
       "/api/agents/cli", "/api/plugins/agents", "/api/agents/install", "/api/whatsnew", "/api/drift", "/api/omarchy"].includes(p)) return json({});
