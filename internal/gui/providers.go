@@ -849,7 +849,10 @@ func providerInfoWith(p provider.Provider, ls provider.Listing, agents []agentUs
 		}
 		window := p.WindowOf(m)
 		j := modelJSON{ID: m.ID, Name: m.Name, Efforts: provider.EffortsOf(m), On: on, Context: window, Output: provider.OutputWithin(window, p.ReplyLimitIn(m, set)), Listed: provider.ListedWindow(m), Max: m.MaxContext, Free: m.Free, Rate: m.Rate, RateWas: m.RateWas, Images: images, ImageSet: imageSet, Own: own, Best: newest[m.ID]}
-		if l, _, ok := plugin.ModelLoad(p.PluginProvider(), m.ID, time.Now()); ok {
+		// a plugin reports a model's load by its own id, not one the user
+		// lists it by (axelburks on Discord)
+		ownID := p.OwnModelID(m.ID)
+		if l, _, ok := plugin.ModelLoad(p.PluginProvider(), ownID, time.Now()); ok {
 			j.Load = &l
 		}
 		if i := slices.IndexFunc(most, func(c catalog.Model) bool { return c.ID == m.ID }); j.Max == 0 && i >= 0 {
@@ -871,8 +874,8 @@ func providerInfoWith(p provider.Provider, ls provider.Listing, agents []agentUs
 		}
 		j.NoAPI = noAPI(m.ID)
 		j.Same = sames[ref]
-		if own := p.OwnModelID(m.ID); own != m.ID {
-			j.Vendor = own
+		if ownID != m.ID {
+			j.Vendor = ownID
 		}
 		j.IDs = p.TakesModelIDs()
 		j.Kind = p.ModelKind(m.ID)
@@ -1962,9 +1965,22 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				provider.ForgetPlanQuotas()
 			}
 			// a new key means a new vendor list is worth a try; keep it short
-			if p, err := provider.Find(in.ID); err == nil && p.Ready() && (old == nil || old.Key != p.Key) {
+			if p, err := provider.Find(in.ID); err == nil && p.Ready() {
 				ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
-				p.Fetch(ctx)
+				// and each key it didn't have before is given the models
+				// its own list has, beside it (PrefillNewKeys)
+				had := map[string]map[string]bool{in.ID: {}}
+				if old != nil {
+					for _, k := range old.KeyList() {
+						had[in.ID][k.ID] = true
+					}
+				}
+				var wg sync.WaitGroup
+				wg.Go(func() { provider.PrefillNewKeys(ctx, had, in.ID) })
+				if old == nil || old.Key != p.Key {
+					p.Fetch(ctx)
+				}
+				wg.Wait()
 				cancel()
 			}
 			// after the list is fetched: a limit has to name a model it has
@@ -2443,6 +2459,12 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 		}
 		var err error
 		var moved []agent.Move
+		// the keys it had, so a key added is asked for its own models
+		// (PrefillNewKeys)
+		var held map[string]map[string]bool
+		if a := r.PathValue("action"); a == "add" || a == "import" {
+			held = provider.KeysHeld(in.ID)
+		}
 		switch r.PathValue("action") {
 		case "add":
 			err = provider.AddKey(in.ID, in.Name, in.Key, in.Protocol)
@@ -2486,7 +2508,14 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 		if a := r.PathValue("action"); a == "add" || a == "import" || a == "on" || a == "plan" {
 			if p, err := provider.Find(in.ID); err == nil && p.Ready() && (len(p.KeysOn()) > 1 || a == "plan") {
 				ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+				// and a key added is given the models its own list has
+				// beside it, in the same wait (Young on Discord)
+				var wg sync.WaitGroup
+				if held != nil {
+					wg.Go(func() { provider.PrefillNewKeys(ctx, held, in.ID) })
+				}
 				p.Fetch(ctx)
+				wg.Wait()
 				cancel()
 			}
 		}

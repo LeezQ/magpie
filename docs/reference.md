@@ -54,7 +54,7 @@ line; agents connected to magpie lose it when it quits.
   use its models through the gateway, with nothing copied and no key to
   paste.
 - **Providers with one field.** Pick a preset (Anthropic, OpenAI, Gemini,
-  Amazon Bedrock and its Mantle endpoint, DeepSeek, Kimi, GLM, MiniMax, StepFun, Qwen, Baidu Qianfan, Tencent Cloud Token Plan,
+  Amazon Bedrock and its Mantle endpoint, DeepSeek, Kimi, GLM, MiniMax, StepFun, LongCat, Qwen, Baidu Qianfan, Tencent Cloud Token Plan,
   Huawei Cloud MaaS, Volcengine Ark, Mistral, Groq, Nous Portal, xAI, OpenRouter, Together,
   Fireworks, SiliconFlow, NVIDIA NIM, ModelScope, AiHubMix, PipeLLM, 302.AI, Ollama, LM Studio…),
   paste a key, done. Custom vendors need a name and a base URL. magpie never
@@ -146,6 +146,7 @@ line; agents connected to magpie lose it when it quits.
 | Raycast      | `~/.config/raycast/ai/providers.yaml` in the user's folder, on Mac and Windows | provider (a `magpie` entry in Raycast AI's Custom Providers, magpie's models in its model picker; Raycast Pro; the user's providers, `tools` and comments kept) |
 | Kiro Crew    | `~/.kiro/crew/config.json` (`$KIROCREW_HOME`; `config.local.json` over it is left alone) | provider, harness (`agent.acp_backend`, and `agent.member_acp_backend` for a harness that can dispatch: an agent connected to magpie, so its models are magpie's: the one Crew is set to is connected along with it when it isn't yet, and disconnected with it again; the user's value is put back on Disconnect) |
 | OpenPencil   | `openpencil/settings.json` in the config folder: `~/Library/Application Support` (macOS), `$XDG_CONFIG_HOME` or `~/.config` (Linux), `%APPDATA%` (Windows) | provider (a `magpie` entry in its `builtin_agents`, magpie's models in its chat's model picker; the user's entries and settings kept; refused while OpenPencil runs, as it writes the file back when it quits) |
+| OpenBot      | `OpenBot/openbot-custom-providers-v1.json` in the app data folder: `~/Library/Application Support` (macOS), `%APPDATA%` (Windows), `$XDG_CONFIG_HOME` or `~/.config` (Linux) | provider (a keyless `magpie` endpoint, magpie's models in its model picker; the user's endpoints kept; OpenBot reads it at start, so restart it) |
 | NewMax       | `newmax.db` (SQLite, the row `app` of its `settings` table) in `$NEWMAX_USER_DATA_DIR`, else `~/.newmax` (every OS) | provider (a `magpie-gateway` entry in its `providers` and `providerOrder`, magpie's models in its model picker; the rest of the row kept byte for byte; refused while NewMax runs, as it writes its settings back whenever one changes) |
 | T3 Code      | `~/.t3/userdata/settings.json` (`$T3CODE_HOME/userdata`) | provider (a `magpie` provider instance on Claude Code, magpie's models as its custom models; a `magpie-codex` instance on Codex, whose `launchArgs` are Codex's own `-c` overrides to magpie and a `magpie-codex-models.json` catalog beside the settings. The harness is picked in T3's model picker) |
 | OpenHanako   | `~/.hanako/provider-catalog.json` + `agents/<id>/config.yaml` (`$HANA_HOME`; its local API while it runs) | model (the primary agent's; magpie's models as a provider) |
@@ -711,6 +712,13 @@ member, and is refused any other model with a 403 in the API's error shape
 before a provider is asked; a fallback it may not use is skipped. A key with
 no models listed may use every model.
 
+A decision model (Jev, Clef and the like) is a model too: a routing group
+the key names asks its own decision model for every turn, whatever the key
+lists, but the key may ask one itself, at `/v1/systemone` or in another
+magpie's list of decision models, only when it names it (or its
+`<provider>/*`). The menu lists the decision models after their provider's
+chat models, each marked as one (Kautism on Discord).
+
 A gateway key can also be held to some **accounts** (#905): the accounts
 and keys its requests may use, picked in the same menu right after their
 provider's models — an account by who is signed in, a key by its
@@ -782,10 +790,12 @@ The list is the models the shared magpie shows Codex (its Agents page
 picks), each as the `model_catalog_json` magpie writes for a Codex on its
 own computer describes it, and only the models the key may use. Codex 0.161
 reads it by default; 0.160 needs `[features] api_key_model_discovery = true`.
-Codex reads at most 1 MiB of a catalog, and every entry carries Codex's
-prompt, so past about 125 models the list keeps the first that fit and the
-answer's `X-Magpie-Left-Out` header says how many it left out: pick fewer
-for Codex, or hold the key to fewer.
+Codex before 0.166 reads at most 1 MiB of a catalog, and every entry
+carries the instructions official Codex sends its model (about 21 KB), so
+for such a Codex past about 48 models the list keeps the first that fit and
+the answer's `X-Magpie-Left-Out` header says how many it left out: update
+Codex, pick fewer for Codex, or hold the key to fewer. Codex 0.166 and later
+read the list whole (magpie knows it by the `client_version` Codex sends).
 
 A request that reaches loopback through a proxy or tunnel on this computer
 (Cloudflare Tunnel's `cloudflared`, ngrok, Tailscale serve or funnel, frp's
@@ -1779,7 +1789,9 @@ each of these groups ordered by the share used.
   for it, else its list price, at the provider's price rate and rate
   windows; a model its vendor serves free costs nothing. DeepSeek's own
   API, and Command Code's and OpenCode Go's DeepSeek models, bill double
-  in their peak hours (weekdays 01:00–04:00 and 06:00–10:00 UTC), so a
+  in their peak hours (weekdays 01:00–04:00 and 06:00–10:00 UTC), and
+  Ollama Cloud's DeepSeek V4.1 Flash and V4 Pro in its own (weekdays
+  12:00–18:00 UTC; half price the rest of the time), so a
   DeepSeek model on two providers goes to whichever is cheaper at that
   hour. A tie on that goes to the cheaper cache read; members that still
   cost the same keep their order, and one with no known price goes after
@@ -2181,7 +2193,11 @@ An optional `X-Magpie-Account: <account>` header (the account's email
 or login, or its id on the Routing page) pins a request to one account of a
 subscription with several: only it is tried, and an unknown account, one
 whose plan lacks the model, or one resting is an error rather than another
-account's reply. The header is not sent on to the vendor.
+account's reply. The header is not sent on to the vendor. A header value is
+ASCII, so an account named in other letters (`北冥`) is sent percent-encoded
+(`X-Magpie-Account: %E5%8C%97%E5%86%A5`, JavaScript's `encodeURIComponent`);
+magpie decodes it, and a value that isn't such an encoding is the name as
+written.
 
 A status bar can show where a turn went before its first token arrives:
 send `X-Magpie-Session: <id>` with the requests (an agent's own session
@@ -2474,10 +2490,16 @@ last` (or *Only after everything else* under *Use credits*) keeps the
 credits but spends them last: once a window is used up, the account is
 tried after every other account, key and fallback that isn't on its
 credits, so the order goes subscription, then API key, then the credits.
-`magpie quota credits` lists the accounts set not to spend them and those
-that spend them last, `magpie quota credits <account>` says one's.
-It changes the gateway's routing only, never the account Codex is signed in
-to. The credits an account holds show beside its windows in `magpie quota`,
+`magpie quota credits <account> first` (or *Before moving to another
+account* under *Use credits*, on the Usage card or under the account's ⋯
+in its provider's editor) spends them before moving on: by default magpie
+sends requests to an account with room once one is nearly used up, and
+signs Codex in to it; with first, while the account holds credits, it keeps
+its place in the order and Codex stays signed in to it. First and last are
+one or the other. `magpie quota credits` lists the accounts set not to
+spend them and those that spend them first or last, `magpie quota credits
+<account>` says one's. Off and last change the gateway's routing only,
+never the account Codex is signed in to. The credits an account holds show beside its windows in `magpie quota`,
 `magpie accounts`, the Usage page and the menu bar panel.
 
 An account can have a name of your own, for telling apart seats the vendor
@@ -2990,6 +3012,7 @@ magpie quota refresh codex      # read Codex's cards again now (once per 30s)
 magpie quota wait codex         # block until a Codex account has allowance again
 magpie quota credits me@example.com off   # hold a ChatGPT account at its limit instead of spending credits
 magpie quota credits me@example.com last  # spend its credits only after every other account, key and fallback
+magpie quota credits me@example.com first # spend its credits before moving to another account
 
 magpie tools                    # the tools magpie's MCP servers give agents, with their parameters
 magpie tools generate_image     # one tool in full

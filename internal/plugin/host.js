@@ -1264,7 +1264,7 @@ async function loadPlugins(list) {
     // magpie's own (OpenCode has none): the plugin's options as the user
     // set them in magpie, read when wanted, so a change reaches the
     // plugin without a restart (#2038)
-    magpie: { option: optionValue, options: optionValues, load: reportLoad },
+    magpie: { option: optionValue, options: optionValues, load: reportLoad, usage: reportUsage, account: keyFor },
   }
   // pi's packages and extensions are loaded as pi loads them (pi.js)
   let pi
@@ -1724,6 +1724,13 @@ function kinds(c) {
 // gives no kinds, and is not one that said nothing.
 const kindsSaid = (c) => !!c && typeof c === "object" && MODALITIES.some((k) => typeof c[k] === "boolean")
 
+// inputSaid is whether a capabilities.input is someone's word on what the
+// model takes: the host's default for a config model said nothing of,
+// {"text": true} alone, is nobody's word (#1595). Whoever says the kinds
+// says them each — models.dev and the config expand them all, and a
+// plugin's models hook gives its own (#4436).
+const inputSaid = (c) => kindsSaid(c) && (Object.keys(c).length > 1 || c.text !== true)
+
 // fromModelsDev is a models.dev model as OpenCode's provider list has it.
 // temperature is what models.dev itself said of it, left out where it said
 // nothing: capabilities.temperature is OpenCode's own, and its false is
@@ -1983,6 +1990,37 @@ function reportLoad(provider, loads) {
   return n
 }
 
+// reportUsage is magpie.usage(provider, call): a request a plugin sent its
+// vendor on its own, outside any request magpie handed it (Devin's cache
+// keepalive ping, plugins#592), for the request log and the usage totals
+// to list and count. call is {kind, model, input?, output?, cacheRead?,
+// cacheWrite?, status?, ms?, error?, account?}: kind says what the
+// request was for ([a-z0-9_-], 1–40: "cache_keepalive"), model the
+// model's id as magpie handed it to the plugin; the tokens are whole
+// numbers from 0 (input without the cache's), status the vendor's (0 for
+// none), ms how long it took. account is the account the request was
+// sent for, as magpie.account(provider) named it while a request of
+// magpie's was in the plugin's hands; without it, the account of the
+// request being served now, else the provider's first. It returns true
+// when the call was sent on.
+const USAGE_KIND = /^[a-z0-9_-]{1,40}$/
+function reportUsage(provider, call) {
+  if (typeof provider !== "string" || !provider || provider.length > 200) throw new TypeError("magpie.usage: provider must be a provider id")
+  if (!call || typeof call !== "object" || Array.isArray(call)) throw new TypeError("magpie.usage: call must be an object")
+  if (typeof call.kind !== "string" || !USAGE_KIND.test(call.kind)) throw new TypeError("magpie.usage: kind must be 1–40 of [a-z0-9_-]")
+  const model = shown(call.model, 200)
+  if (!model) throw new TypeError("magpie.usage: model must be the model's id")
+  const n = (v, most = 1e12) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(Math.floor(v), most) : 0)
+  const account = typeof call.account === "string" && call.account && providerOf(call.account) === provider ? call.account : keyFor(provider)
+  send({
+    event: "usage",
+    provider,
+    account,
+    usage: { kind: call.kind, model, input: n(call.input), output: n(call.output), cacheRead: n(call.cacheRead), cacheWrite: n(call.cacheWrite), status: n(call.status, 999), ms: n(call.ms), error: shown(call.error, 500) },
+  })
+  return true
+}
+
 // optionValue is one of provider's options as it stands; false for a key
 // its plugin doesn't declare.
 function optionValue(provider, key) {
@@ -2137,6 +2175,7 @@ async function providers({ proxies } = {}) {
           imageSaid: typeof m.capabilities?.input?.image === "boolean",
           // every kind it takes and gives, not image alone (#1595)
           inputs: kinds(m.capabilities?.input),
+          inputsSaid: inputSaid(m.capabilities?.input),
           outputs: kinds(m.capabilities?.output),
           outputsSaid: kindsSaid(m.capabilities?.output),
           // whether the model takes temperature and top_p, where something
@@ -2660,9 +2699,43 @@ async function doFetch(id, record, params) {
   return via.run(params.proxy ?? "", () => inScope(params.provider, key, () => fetchAs(id, record, key, params)))
 }
 
+// staleAccess is what a bare 401 says of the OAuth sign-in at key that
+// had a refresh token when the request began (before): "kept" when the
+// access token alone was turned away, so the next request renews it, and
+// nothing, for the 401 to mark the account, when the refresh is what
+// failed. An access token the vendor dropped before the expiry it was
+// stored with (an idle account, another client trading the same refresh
+// token: plugins#618) isn't the sign-in gone. So such a 401, with the
+// access token the request began with still the stored one and not due
+// yet, makes it due (expires 1) and keeps the sign-in: the plugin's
+// loader, or magpie's auth.refresh, renews it on the next request. The
+// account is marked when the token was renewed for this request and
+// still turned away, or was due and the plugin didn't renew it; a
+// refresh the vendor refuses says so itself (signIn "expired"). A
+// sign-in that can't be read now is unknown: kept, not marked.
+function staleAccess(key, before) {
+  const now = readAuthState()
+  if (!now.known) return "kept"
+  if (before?.type !== "oauth" || !before.refresh) return ""
+  const cur = now.all[key]
+  if (cur?.type !== "oauth" || cur.refresh !== before.refresh || cur.access !== before.access) return ""
+  const exp = Number(before.expires)
+  if (!Number.isFinite(exp) || exp <= Date.now()) return ""
+  changeAuth((all) => {
+    const a = all[key]
+    if (a?.type !== "oauth" || a.access !== before.access || a.refresh !== before.refresh) return false
+    all[key] = { ...a, expires: 1 }
+  })
+  forgetAccount(key)
+  return "kept"
+}
+
 async function fetchAs(id, record, key, params) {
   const { controller: ctl, gate } = record
   const { provider, model, npm, url, method, headers, body, session } = params
+  // the sign-in as the request found it, before its loader or magpie
+  // renewed it: a 401 is judged against it (staleAccess)
+  const before = key ? readAuth()[key] : undefined
   try {
     const o = await options(provider, key)
     checkFetch(record)
@@ -2716,6 +2789,10 @@ async function fetchAs(id, record, key, params) {
     transitionFetch(record, "streaming")
     const rh = {}
     res.headers.forEach((v, k) => (rh[k] = v))
+    if (res.status === 401 && !("x-magpie-sign-in" in rh) && key) {
+      const said = staleAccess(key, before)
+      if (said) rh["x-magpie-sign-in"] = said
+    }
     const head = headCost(rh)
     if (head.entries > HEAD_ENTRIES || head.n > HEAD_MAX) {
       // the reply's head is past magpie's envelope: give the fetch up rather

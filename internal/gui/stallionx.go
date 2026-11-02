@@ -6,8 +6,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/yetone/magpie/internal/brand"
 	"github.com/yetone/magpie/internal/stallionx"
 )
 
@@ -171,4 +173,14 @@ func stallionxPayerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/stallionx/payers/enable", payerAction("enable", stallionx.EnablePayer))
 	mux.HandleFunc("POST /api/stallionx/payers/remove", payerAction("remove", stallionx.RemovePayer))
 	mux.HandleFunc("POST /api/stallionx/payers/default", payerAction("default", stallionx.SetDefaultPayer))
+}
+
+// stxBranded puts the product's name in a label upstream writes with
+// "magpie" in it, in any of its languages ("Quit magpie", "退出 magpie",
+// "magpie を終了"). Upstream's Command-Q confirmation replaced the Mac app
+// menu's Quit role item, which macOS labels with the app's own name, with
+// an item of its own; this keeps that item saying "Quit StallionX" as it
+// did, without changing upstream's tray words or their tests.
+func stxBranded(label string) string {
+	return strings.ReplaceAll(label, "magpie", brand.Name)
 }

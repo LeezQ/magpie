@@ -641,7 +641,7 @@ func affine(scope, mode string, rotate, spread, inOrder bool, in http.Header, fr
 		// its cache as before; within a turn it stays, and Stays:
 		// Session or Strict, the user's own, keep it where it is
 		a.Why = "back"
-	case at > 0 && pl.order[at].Known && pl.order[at].Used >= provider.SpentShareOf(cs[at].p.Routing):
+	case at > 0 && pl.order[at].Known && pl.order[at].Used >= provider.SpentShareOf(cs[at].p.Routing) && !pl.order[at].CreditsFirst:
 		// all but used up, and put behind another: first still — the
 		// one key or account it has (#1016), or every one used up — it
 		// doesn't move
@@ -761,7 +761,7 @@ func standsInFor(c candidate, cs []candidate, order []Weighed) bool {
 		}
 		for _, w := range order {
 			if w.ID == o.rest && w.Model == o.model && w.Fixed == o.effort {
-				if w.Rest != nil || w.Known && w.Used >= provider.SpentShareOf(o.p.Routing) {
+				if w.Rest != nil || w.Known && w.Used >= provider.SpentShareOf(o.p.Routing) && !w.CreditsFirst {
 					return true
 				}
 				break
@@ -852,10 +852,10 @@ func leastHeld(scope, key string, cs []candidate, pl planned, ready bool) ([]can
 // readyForNew says whether order[i], behind order[0], is one routing would
 // put a new conversation on: not resting, nor a key for another protocol,
 // nor a fallback while the provider's own model leads, nor used past
-// lowShare.
+// lowShare unless it spends its credits first (Weighed.CreditsFirst).
 func readyForNew(order []Weighed, i int) bool {
 	w := order[i]
-	return w.Rest == nil && !w.Aside && !standsIn(order, i) && !(w.Known && w.Used >= lowShare) && !lastBehind(order, i) && !busyBehind(order, i)
+	return w.Rest == nil && !w.Aside && !standsIn(order, i) && !(w.Known && w.Used >= lowShare && !w.CreditsFirst) && !lastBehind(order, i) && !busyBehind(order, i)
 }
 
 // standsIn says whether order[i] is a provider's fallback while one of the
@@ -1027,8 +1027,14 @@ func unanswered(key string, c candidate) {
 // provided encrypted_content. Ensure the value is the unmodified
 // encrypted_content from a previous response."; Azure's (through a relay
 // in front of a deployment, snowshadow) "invalid encrypted summary",
-// which names no item and spells it with spaces.
-var foreignReasoning = regexp.MustCompile(`(?i)invalid_encrypted_content|invalid[ _]encrypted[ _](summary|content)|encrypted[ _]content.{0,80}could not be (verified|decrypted)|could not (decrypt|verify).{0,40}encrypted[ _]content`)
+// which names no item and spells it with spaces; xAI's compaction-blob
+// refusal, as a key relay that proxies Grok hands it back for the
+// reasoning item Codex writes with "content": null beside its
+// encrypted_content (zminds #4412) — "Could not decode the compaction
+// blob", which names no item and says nothing of encrypted content,
+// where the #3392 shaping (xaiBody's) never runs because the relay's
+// host isn't api.x.ai.
+var foreignReasoning = regexp.MustCompile(`(?i)invalid_encrypted_content|invalid[ _]encrypted[ _](summary|content)|encrypted[ _]content.{0,80}could not be (verified|decrypted)|could not (decrypt|verify).{0,40}encrypted[ _]content|could not (decode|decrypt).{0,20}compaction[ _]blob`)
 
 // refusedSeals remembers, per conversation and the key or account that
 // refused it, the sealed reasoning another one wrote. Codex hands every
@@ -1082,7 +1088,12 @@ func seals(body []byte, kinds ...string) [][sha256.Size]byte {
 // refused notes that who turned away the sealed items of these types in
 // body, in the conversation key names.
 func refused(key, who string, body []byte, kinds ...string) {
-	ss := seals(body, kinds...)
+	noteRefused(key, who, seals(body, kinds...))
+}
+
+// noteRefused notes that who turned away the sealed items of these hashes
+// in the conversation key.
+func noteRefused(key, who string, ss [][sha256.Size]byte) {
 	if len(ss) == 0 {
 		return
 	}

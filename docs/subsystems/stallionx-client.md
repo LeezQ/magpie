@@ -22,6 +22,19 @@ branch or committing them. The provider rendering merge preserves upstream's
 ICO and 20/24/40px executable resources are generated from StallionX artwork
 by `build/icon/stallionx-icons.sh` and `stallionx-ico.py`.
 
+On 2026-11-02 the release branch merged 131 upstream commits, `d1a94f579` to
+`d577c184b` (a merge commit: `fork/main` is published, so it is not rebased).
+Two files conflicted. `release.yml` keeps the StallionX release workflow;
+upstream's only change there was about magpie-releases' notes. In
+`internal/gui/app.go` the Help menu keeps `brand.ServiceURL`, and upstream's
+new Command-Q confirmation replaces the Mac Quit role item with its own. Its
+label goes through `stxBranded` (`internal/gui/stallionx.go`), so it still
+reads "Quit StallionX" without changing upstream's tray words or their tests.
+Upstream's new `notes-mirror.yml` runs on `yetone/magpie` alone, as
+`docker.yml` does. Upstream's `/api/usage/checkin-account` has no CLI entry
+in `internal/cli/settings_parity_test.go` on upstream either, and is left for
+upstream.
+
 The missing console bridge functions are now implemented. Both the isolated Web
 bundle and native developer binary build. The current console architecture and
 verification are described below; this is not a release-acceptance record.
