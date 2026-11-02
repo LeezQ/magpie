@@ -68,7 +68,30 @@ try {
   await patch('pages/Token/TokenList.jsx', '<TokenTable tokens={tokens} loading={false} {...tableProps} />', '<TokenTable tokens={tokens} loading={false} resolveKey={async (token) => (await get(token.team_id ? `/api/team/${token.team_id}/tokens/${token.id}` : `/api/token/${token.id}`)).data.key} {...tableProps} />')
   await patch('pages/Token/TokenTable.jsx', "await put('/api/token/', { id, status })", "const key = tokens.find((key) => key.id === id)\n      await put(key?.team_id ? `/api/team/${key.team_id}/tokens/${id}` : '/api/token/', { id, status })")
   await patch('pages/Token/TokenTable.jsx', 'await del(`/api/token/${id}`)', 'const key = tokens.find((key) => key.id === id)\n      await del(key?.team_id ? `/api/team/${key.team_id}/tokens/${id}` : `/api/token/${id}`)')
-  await patch('pages/Token/TokenTable.jsx', '    ...getTokenPermissions?.(token),', '    ...getTokenPermissions?.(token),\n    ...(token.desktop_managed ? { edit: false, manage: false } : {}),')
+  // The desktop app's own keys (desktop_managed: the account's and each team
+  // payer's) can be edited and switched on or off like any key, but never
+  // deleted, and their name stays: the app finds its key again by name. The
+  // BFF refuses both either way (internal/stallionx desktopKeyChange); this
+  // only keeps the page from offering them. `manage` gates the switch and the
+  // delete button together, so the delete button is hidden on its own.
+  await patch('pages/Token/TokenTable.jsx', '{showActions && <Tooltip>', '{showActions && !token.desktop_managed && <Tooltip>')
+  await patch('pages/Token/TokenForm.jsx', `              onChange={(e) => setName(e.target.value)}
+            />
+          </div>`, `              onChange={(e) => setName(e.target.value)}
+              disabled={!!token?.desktop_managed}
+              aria-describedby={token?.desktop_managed ? 'token-name-locked' : undefined}
+            />
+            {token?.desktop_managed && <p id="token-name-locked" className="text-xs text-muted-foreground">{t('form.nameLockedHint')}</p>}
+          </div>`)
+  for (const [locale, hint] of Object.entries({
+    en: 'The desktop app finds this key by its name, so the name can\'t be changed. It can\'t be deleted here either.',
+    'zh-CN': '桌面客户端按名称找回这把 Key，所以名称不能修改，也不能在这里删除。',
+  })) {
+    const file = `i18n/locales/${locale}/token.json`
+    const value = JSON.parse(await readFile(join(stage, 'src', file), 'utf8'))
+    const anchor = `"namePlaceholder": ${JSON.stringify(value.form.namePlaceholder)},`
+    await patch(file, anchor, anchor + `\n    "nameLockedHint": ${JSON.stringify(hint)},`)
+  }
   await patch('pages/Token/TokenTable.jsx', "import TokenSourcesDialog from '@/pages/Token/TokenSourcesDialog'", "import TokenSourcesDialog from '@/pages/Token/TokenSourcesDialog'\nimport KeyDetails from '@/desktop/KeyDetails'")
   await patch('pages/Token/TokenTable.jsx', "  const { t } = useTranslation('token')", "  const { t } = useTranslation('token')\n  const [detailToken, setDetailToken] = useState(null)")
   await patch('pages/Token/TokenTable.jsx', '<TableCell className="font-medium">{token.name}</TableCell>', '<TableCell className="font-medium"><button type="button" className="text-left hover:underline" onClick={(event) => { event.stopPropagation(); setDetailToken(token) }}>{token.name}</button></TableCell>')

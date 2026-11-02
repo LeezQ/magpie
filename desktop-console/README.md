@@ -22,7 +22,11 @@ do not require Node or the sibling repository. Rebuild after syncing Web changes
 - Personal pages force personal wallet/log/key scope. Team routes resolve the
   immutable team ID and require real membership, regardless of platform role.
 - Lists mask keys; an explicit copy retrieves the owned/authorized team key.
-  The desktop-managed key is read-only here to prevent accidental loss of access.
+  The desktop app's own keys (`desktop_managed`: the account's and each team
+  payer's) can be edited and switched on or off like any key. Their delete
+  button is hidden and their name field is locked with the reason shown, since
+  the app finds its key again by name. The BFF refuses a rename or delete
+  either way, and after a save it refetches that key's provider's models.
 - Copies go to the native parent. The app's window refuses the frame's own
   `navigator.clipboard`, so `bridge.js` replaces `writeText` once (no Web page
   is patched). It posts `stx-console-copy` and waits up to 10 seconds for an

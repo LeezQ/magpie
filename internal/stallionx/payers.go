@@ -544,18 +544,113 @@ func removeTeamProvider(s saved, teamID string) {
 	}
 }
 
-// desktopTeamKey says key (a service token as the console reads it) is a
-// team key this computer's payers use: the console must not let it be
-// edited or deleted there, as with the personal desktop key.
-func desktopTeamKey(s saved, key map[string]json.RawMessage) bool {
+// desktopTeamOf is the public id of the team whose payer here uses key (a
+// service token as the console reads it), matched by its service id or by
+// the key itself, or "" when no team payer does. The console lets such a key
+// be edited but not renamed or deleted (desktopKeyChange).
+func desktopTeamOf(s saved, key map[string]json.RawMessage) string {
 	id, plain := rawString(key["id"]), rawString(key["key"])
-	for _, t := range s.Teams {
+	for teamID, t := range s.Teams {
 		if t.TokenID != "" && t.TokenID == id {
-			return true
+			return teamID
 		}
 		if plain != "" && t.KeyHash != "" && keyHash(plain) == t.KeyHash {
-			return true
+			return teamID
 		}
 	}
-	return false
+	return ""
+}
+
+// desktopPersonal names the account's own key in desktopKeyOf's answer.
+const desktopPersonal = "personal"
+
+// desktopKeyOf says which of the desktop app's own keys key is: desktopPersonal
+// for the account's key (saved by its hash), a team's public id for that
+// team payer's key, or "" for any other key. A key listed masked matches only
+// by its id, which is enough for a team key and never for the personal one.
+func desktopKeyOf(s saved, key map[string]json.RawMessage) string {
+	if plain := rawString(key["key"]); plain != "" && s.KeyHash != "" && keyHash(plain) == s.KeyHash {
+		return desktopPersonal
+	}
+	return desktopTeamOf(s, key)
+}
+
+// desktopKeyChange says whether the console may make this change to one of
+// the desktop app's own keys. Every setting can be changed (channel groups,
+// and with them its models, quota, IP allow list, expiry, enabled or not),
+// as on any key, but two changes are refused because the app would lose the
+// key with no way back from this page:
+//   - deleting it;
+//   - renaming it: /api/cli/provision finds the key again by its name
+//     (tokenName) at sign-in and on Retry setup, so a renamed personal key is
+//     replaced by a new one on the default groups (losing these settings) and
+//     a renamed team key leaves the team with "no key on this computer".
+//
+// The service applies a name only when it is non-empty after trimming
+// (UpdateToken), so an empty or absent name, or the key's own, changes nothing.
+func desktopKeyChange(method string, key, fields map[string]json.RawMessage) error {
+	if method == http.MethodDelete {
+		return consoleRefused("The desktop app uses this key, so it can't be deleted here. Its other settings can be changed")
+	}
+	if name := strings.TrimSpace(rawString(fields["name"])); name != "" && name != strings.TrimSpace(rawString(key["name"])) {
+		return consoleRefused("The desktop app finds this key by its name, so the name can't be changed. Its other settings can be")
+	}
+	return nil
+}
+
+// refreshDesktopModels fetches again the models of the provider that serves a
+// desktop key the console just changed (which, as desktopKeyOf says it), so
+// the Providers page and the agents see what the key gives now, and records
+// how many there are. The service lists a key's models from its channel groups
+// (/v1/models) and drops its cached copy of a key on every update, so the
+// list fetched here is the edited key's.
+//
+// The edit has already succeeded on the service by then, so a failed fetch
+// is logged and returned, never shown as a failed save; it leaves the setup
+// state as it was. A key switched off, for one, fails here and its provider
+// keeps its last list until it is switched on again or refreshed. A count of
+// zero is recorded as it is: the catalog is already empty by then.
+func refreshDesktopModels(ctx context.Context, s saved, which string) error {
+	id := ProviderID
+	if which != desktopPersonal {
+		id = teamProviderID(which)
+	}
+	p, err := provider.Find(id)
+	if err != nil {
+		log.Printf("stallionx: finding provider %s to refresh its models after a key edit: %v", id, err)
+		return err
+	}
+	// a fetch is network I/O: it runs outside mu, which every account read needs
+	models, err := p.Fetch(ctx)
+	if err != nil {
+		log.Printf("stallionx: refreshing %s's models after a key edit: %v", id, err)
+		return err
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	now, err := readAccount()
+	if err != nil {
+		log.Printf("stallionx: reading the account to record %s's models: %v", id, err)
+		return err
+	}
+	// another sign-in since the edit: its own setup counts its models
+	if now.At != s.At || now.Email != s.Email || now.Service != s.Service {
+		return nil
+	}
+	if which == desktopPersonal {
+		now.ModelCount = len(models)
+	} else {
+		t, ok := now.Teams[which]
+		if !ok {
+			return nil // the team was removed from this computer meanwhile
+		}
+		t.ModelCount = len(models)
+		now.Teams[which] = t
+	}
+	if err := writeAccount(now); err != nil {
+		log.Printf("stallionx: recording %s's models: %v", id, err)
+		return err
+	}
+	invalidateAccess()
+	return nil
 }

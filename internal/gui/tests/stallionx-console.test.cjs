@@ -322,6 +322,50 @@ for (const engine of engines) for (const lang of ['en','zh']) {
   });
 }
 
+// The desktop app's own key (desktop_managed: the account's, or a team payer's,
+// as the BFF marks it) is edited like any key: the edit button opens the form
+// and the on/off switch works. Only its delete button is gone and its name is
+// locked, with the reason shown, since the app finds its key again by name.
+// The save sends the name unchanged, which the BFF accepts. Another key in the
+// same list keeps its delete button.
+for (const engine of engines) for (const lang of ['en','zh']) {
+  test(`${engine} ${lang}: the desktop key is edited but keeps its name and its delete is withheld`, async ctx => {
+    const {page,unsupported,verify} = await consoleSetup(ctx,engine,lang,1280);
+    const name = 'StallionX 客户端', puts = [];
+    const key = (id, name, extra) => ({id,user_id:'user_fixture',team_id:'',name,key:'****1234',status:1,quota:'0',used_amount:'0',period_type:'',period_quota:'0',channel_group_ids:['cgroup_fixture'],created_at:'2026-10-01T00:00:00Z',...extra});
+    const items = [key(keyID,name,{desktop_managed:true}), key('key_00000000000000000000000000000001','Scripts')];
+    // page routes come before the console fixture's context route
+    await page.route(url => url.origin === consoleOrigin && url.pathname === '/api/stallionx/console/api/token/', route => {
+      const req = route.request();
+      if (req.method() === 'PUT') { puts.push(JSON.parse(req.postData())); return route.fulfill({json:{success:true,data:null}}); }
+      return route.fulfill({json:{success:true,data:{items,total:items.length}}});
+    });
+    const L = lang === 'zh'
+      ? {edit:n=>'编辑 '+n, del:n=>'删除 '+n, on:n=>'启用 '+n, save:'保存修改', saved:'令牌更新成功', hint:'桌面客户端按名称找回这把 Key'}
+      : {edit:n=>'Edit '+n, del:n=>'Delete '+n, on:n=>'Enable '+n, save:'Save changes', saved:'API key updated', hint:'The desktop app finds this key by its name'};
+    await page.goto(origin+'/?view=stallion-wallet&account=%2Fpersonal%2Ftoken');
+    const frame = page.frameLocator('iframe.stxc-frame');
+    await frame.getByRole('button',{name:L.edit(name),exact:true}).waitFor();
+    assert.equal(await frame.getByRole('button',{name:L.del(name),exact:true}).count(),0,'no delete for the desktop key');
+    await frame.getByRole('button',{name:L.del('Scripts'),exact:true}).waitFor();
+    await expect(frame.getByRole('switch',{name:L.on(name),exact:true})).toBeEnabled();
+    await frame.getByRole('button',{name:L.edit(name),exact:true}).click();
+    const dialog = frame.getByRole('dialog');
+    await dialog.waitFor();
+    const nameBox = dialog.locator('#token-name');
+    await expect(nameBox).toBeDisabled();
+    await expect(nameBox).toHaveValue(name);
+    await expect(dialog.getByText(L.hint)).toBeVisible();
+    await dialog.getByRole('button',{name:L.save,exact:true}).click();
+    await frame.getByText(L.saved,{exact:true}).waitFor();
+    assert.equal(puts.length,1,'one save');
+    assert.equal(puts[0].id,keyID);
+    assert.equal(puts[0].name,name,'the save keeps the name as it is');
+    assert.deepEqual(unsupported,[]);
+    verify();
+  });
+}
+
 for (const engine of engines) for (const lang of ['en','zh']) for (const width of [1280,390]) {
   test(`${engine} ${lang} ${width}: Web console shares login, compact controls, inline billing and teams`, async ctx => {
     const {page,f,requests,unsupported,verify} = await consoleSetup(ctx,engine,lang,width);

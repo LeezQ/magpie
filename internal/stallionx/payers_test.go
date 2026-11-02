@@ -380,13 +380,13 @@ func TestTeamProvidersGoWithTheAccount(t *testing.T) {
 func TestDesktopTeamKey(t *testing.T) {
 	s := saved{Teams: map[string]teamSaved{"team_alpha": {KeyHash: keyHash("sk-team"), TokenID: "tok_1"}}}
 	raw := func(v string) json.RawMessage { b, _ := json.Marshal(v); return b }
-	if !desktopTeamKey(s, map[string]json.RawMessage{"id": raw("tok_1")}) {
+	if desktopTeamOf(s, map[string]json.RawMessage{"id": raw("tok_1")}) != "team_alpha" {
 		t.Fatal("missed by id")
 	}
-	if !desktopTeamKey(s, map[string]json.RawMessage{"id": raw("tok_9"), "key": raw("sk-team")}) {
+	if desktopTeamOf(s, map[string]json.RawMessage{"id": raw("tok_9"), "key": raw("sk-team")}) != "team_alpha" {
 		t.Fatal("missed by key")
 	}
-	if desktopTeamKey(s, map[string]json.RawMessage{"id": raw("tok_2"), "key": raw("sk-other")}) || desktopTeamKey(saved{}, map[string]json.RawMessage{"id": raw("")}) {
+	if desktopTeamOf(s, map[string]json.RawMessage{"id": raw("tok_2"), "key": raw("sk-other")}) != "" || desktopTeamOf(saved{}, map[string]json.RawMessage{"id": raw("")}) != "" {
 		t.Fatal("matched another key")
 	}
 }

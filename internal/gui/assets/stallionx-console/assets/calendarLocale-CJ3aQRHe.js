@@ -1,0 +1,1 @@
+import{at as e}from"./button-DuFpn8Jx.js";import{n as t,p as n}from"./calendar-DG9xDGCh.js";var r={en:n,"zh-CN":t};function i(){return r[e()]??n}export{i as t};

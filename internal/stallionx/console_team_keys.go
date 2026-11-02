@@ -47,11 +47,17 @@ func (s *consoleSession) serveTeamKey(w http.ResponseWriter, r *http.Request, pa
 		return
 	}
 	// The desktop's own team key is set up and kept by the payers here
-	// (payers.go); editing or deleting it in the console would break the
-	// agents set to that team, as with the personal desktop key.
-	if (r.Method == "PUT" || r.Method == "DELETE") && desktopTeamKey(s.account, key) {
-		consoleFailure(w, consoleRefused("This key manages desktop access. Remove the team from this computer in the account page instead"))
-		return
+	// (payers.go). Like the personal desktop key it takes every setting but a
+	// new name, and is never deleted here (desktopKeyChange): either would
+	// leave the agents set to that team with no key.
+	if r.Method == "PUT" || r.Method == "DELETE" {
+		if team := desktopTeamOf(s.account, key); team != "" {
+			if err := desktopKeyChange(r.Method, key, fields); err != nil {
+				consoleFailure(w, err)
+				return
+			}
+			s.desktopKey = team
+		}
 	}
 	var out json.RawMessage
 	if r.Method == "GET" && len(parts) == 4 {
@@ -93,6 +99,8 @@ func (s *consoleSession) serveTeamKey(w http.ResponseWriter, r *http.Request, pa
 	if r.Method == "PUT" {
 		out = nil
 	}
+	// the team payer's own key, edited: its provider lists what it gives now
+	s.refreshAfterEdit(r)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "data": out})
 }

@@ -76,8 +76,10 @@ upstream authorization cannot be safely narrowed; these fail closed explicitly.
 
 Team keys use membership-authorized lists for explicit reveal and map mutations
 to upstream transactional team checks. Only their owner may edit configuration;
-team managers can enable/disable/delete teammates' keys. The desktop-managed key
-is read-only in this console, preventing accidental loss of automatic access.
+team managers can enable/disable/delete teammates' keys. The desktop app's own
+keys (the account's and each team payer's) can be edited and switched on or off
+here, but not renamed or deleted, and a save refreshes their provider's models
+(see [Editing the desktop keys](#editing-the-desktop-keys---2026-11-02)).
 Configuration saves do not echo keys. Personal/team Playground selection is
 checked against the workspace and owner before a paid request. SSE cancel and
 account replacement stop upstream streaming; paid mutations are never replayed.
@@ -787,3 +789,37 @@ release or a claim that the earlier whole-repository acceptance reds are fixed.
   this message can put text on the clipboard. It is the same first-party
   bundle that already holds the account capability, on its own loopback
   origin.
+
+## Editing the desktop keys - 2026-11-02
+
+- Reported: saving the team "StallionX 客户端" key's channel groups in the user
+  center was refused with "This key manages desktop access. Change its
+  configuration through automatic setup recovery instead". Only the personal
+  key was marked `desktop_managed` in lists, so the team payer's key showed an
+  edit button. The key form saves through the generic `PUT /api/token/`, which
+  refused it with the personal key's message.
+- The desktop app's own keys, the account's and each team payer's
+  (`desktopKeyOf` in `internal/stallionx/payers.go`), now take every setting:
+  channel groups (and with them the models), quota, IP allow list, expiry, and
+  on/off. `desktopKeyChange` refuses two changes on every route that reaches
+  them (`PUT`/`DELETE /api/token/...` and the team key routes): deleting, and a
+  new name. The name stays because `/api/cli/provision` finds the key again by
+  name, enabled and unexpired, at sign-in and on Retry setup. A renamed
+  personal key would be replaced by a new one on the default groups; a renamed
+  team key would leave the team with no key on this computer. A name sent
+  unchanged, padded or empty is accepted, as the service ignores it.
+- Lists mark both kinds `desktop_managed`, a team key by its saved id or key
+  hash only, never by its name (a teammate's key has the same one). The
+  console (`desktop-console/build.mjs`) hides only their delete button and
+  locks the name field with the reason; the edit button and switch work.
+- After the service accepts an edit, `refreshDesktopModels` fetches that key's
+  provider's models again (the service lists a key's models from its channel
+  groups and drops its cached key on every update) and records the count, so
+  Providers and the agents show what the key gives now. It runs before the
+  save answers, on its own 30-second budget. A failed fetch is logged and does
+  not fail the save; a key switched off keeps its provider's last list until
+  it is switched on or refreshed.
+- Consequences the user should know: a switched-off or expired personal key is
+  not found at the next sign-in, and the service creates a new one on the
+  default groups (existing service behaviour); a switched-off team key leaves
+  that team's sync reporting the key as disabled until it is switched on.

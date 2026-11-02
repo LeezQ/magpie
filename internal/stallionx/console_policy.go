@@ -301,8 +301,16 @@ func (s *consoleSession) authorize(ctx context.Context, method, path string, q u
 				return consoleRefused("The selected key belongs to a different workspace")
 			}
 		}
-		if (method == "PUT" || method == "DELETE") && (keyHash(rawString(key["key"])) == s.account.KeyHash || desktopTeamKey(s.account, key)) {
-			return consoleRefused("This key manages desktop access. Change its configuration through automatic setup recovery instead")
+		// The desktop app's own keys (the account's, and a team payer's edited
+		// through this generic route by the key form) take every setting but a
+		// new name, and are never deleted here (desktopKeyChange).
+		if method == "PUT" || method == "DELETE" {
+			if which := desktopKeyOf(s.account, key); which != "" {
+				if err := desktopKeyChange(method, key, fields); err != nil {
+					return err
+				}
+				s.desktopKey = which
+			}
 		}
 	}
 	if parts[0] == "task" || len(parts) == 4 && parts[0] == "team" && parts[2] == "tasks" {

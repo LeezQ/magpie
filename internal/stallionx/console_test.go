@@ -3,12 +3,16 @@ package stallionx
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/yetone/magpie/internal/catalog"
 )
 
 const fixtureKeyID = "key_0123456789abcdef0123456789abcdef"
@@ -20,6 +24,12 @@ func consoleFixture(t *testing.T, handler http.HandlerFunc) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/user/logout" {
 			auth.ServeHTTP(w, r)
+			return
+		}
+		// a provider reads its model list with its own key, as an agent's
+		// request does (refreshDesktopModels); the handler checks which key
+		if r.URL.Path == "/v1/models" || r.URL.Path == "/models" {
+			handler(w, r)
 			return
 		}
 		if r.Header.Get("Authorization") != "Bearer fixture-jwt" {
@@ -117,6 +127,190 @@ func TestConsolePersonalKeyOwnerPreflight(t *testing.T) {
 	}
 	if mutations.Load() != 0 {
 		t.Fatal("non-owner key mutation reached platform-privileged upstream")
+	}
+}
+
+// The desktop app's own keys, the account's and a team payer's, are edited in
+// the console like any other key (reported: saving the team "StallionX 客户端"
+// key's channel groups was refused as "This key manages desktop access").
+// They are never renamed or deleted there, as the app finds its key again by
+// name, and a save fetches that key's provider's models again, so Providers
+// lists what the key gives now. Every route that reaches a key is covered:
+// the key form's PUT /api/token/ (personal and team alike) and the key table's
+// team routes.
+func TestConsoleDesktopKeysEditButNeverRenameOrDelete(t *testing.T) {
+	const teamKeyID = "key_fedcba9876543210fedcba9876543210"
+	const otherKeyID = "key_00000000000000000000000000000001"
+	var state sync.Mutex
+	var writes []string // every mutation that reached the service
+	listed := map[string][]string{"sk-managed": {"m1"}, "sk-team": {"t1"}}
+	off := map[string]bool{} // keys switched off: the service refuses their model list
+	fetches := map[string]int{}
+	keys := map[string]map[string]any{
+		fixtureKeyID: {"id": fixtureKeyID, "key": "sk-managed", "name": tokenName, "team_id": ""},
+		teamKeyID:    {"id": teamKeyID, "key": "sk-team", "name": tokenName, "team_id": "team_alpha"},
+		otherKeyID:   {"id": otherKeyID, "key": "sk-other", "name": "Scripts", "team_id": ""},
+	}
+	binding := consoleFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		state.Lock()
+		defer state.Unlock()
+		switch {
+		case r.URL.Path == "/v1/models":
+			key := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			fetches[key]++
+			if off[key] {
+				w.WriteHeader(401)
+				_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"message": "key disabled"}})
+				return
+			}
+			var data []map[string]string
+			for _, id := range listed[key] {
+				data = append(data, map[string]string{"id": id, "object": "model"})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/api/token/key_"):
+			consoleReply(w, keys[strings.TrimPrefix(r.URL.Path, "/api/token/")])
+		case r.URL.Path == "/api/team/team_alpha":
+			consoleReply(w, map[string]any{"id": "team_alpha", "role": 3, "status": 1})
+		case r.URL.Path == "/api/team/team_alpha/tokens":
+			consoleReply(w, map[string]any{"items": []any{keys[teamKeyID], map[string]any{"id": "key_00000000000000000000000000000002", "key": "sk-colleague", "name": tokenName, "team_id": "team_alpha"}}, "total": 2})
+		case r.URL.Path == "/api/user/self":
+			consoleReply(w, map[string]any{"id": "user_fixture"})
+		case r.Method == "GET":
+			consoleReply(w, map[string]any{})
+		default:
+			body, _ := io.ReadAll(r.Body)
+			writes = append(writes, r.Method+" "+r.URL.Path+" "+string(body))
+			var in struct {
+				ID     string   `json:"id"`
+				Status int      `json:"status"`
+				Groups []string `json:"channel_group_ids"`
+			}
+			_ = json.Unmarshal(body, &in)
+			if in.Status == 9 {
+				w.WriteHeader(400)
+				_ = json.NewEncoder(w).Encode(envelope{Message: "无效的令牌状态"})
+				return
+			}
+			// the service's answer to new groups: the key lists their models
+			if key, ok := keys[in.ID]; ok && in.Groups != nil {
+				listed[key["key"].(string)] = in.Groups
+			}
+			if key, ok := keys[in.ID]; ok && in.Status != 0 {
+				off[key["key"].(string)] = in.Status != 1
+			}
+			consoleReply(w, map[string]any{})
+		}
+	})
+	mu.Lock()
+	s, err := readAccount()
+	if err == nil {
+		s.Setup, s.ModelCount = "ready", 1
+		s.Teams = map[string]teamSaved{"team_alpha": {Name: "Alpha", KeyHash: keyHash("sk-team"), TokenID: teamKeyID, ModelCount: 1}}
+		err = writeAccount(s)
+	}
+	if err == nil {
+		err = saveProvider(s.Service, "sk-managed", "")
+	}
+	if err == nil {
+		err = saveTeamProvider(s, "team_alpha", "Alpha", "sk-team", "")
+	}
+	mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := func(method, path, body string, want int) {
+		t.Helper()
+		if w := consoleCall(binding, method, path, body); w.Code != want {
+			t.Fatalf("%s %s %s: %d %s, want %d", method, path, body, w.Code, w.Body.String(), want)
+		}
+	}
+	counts := func() (personal, team int) {
+		t.Helper()
+		now, err := readAccount()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return now.ModelCount, now.Teams["team_alpha"].ModelCount
+	}
+	live := func(id string) int {
+		models, _, _ := catalog.Live(id)
+		return len(models)
+	}
+
+	// the team list marks this computer's team key, not a colleague's of the same name
+	w := consoleCall(binding, "GET", "/api/team/team_alpha/tokens", "")
+	var list struct {
+		Data struct {
+			Items []map[string]any `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil || len(list.Data.Items) != 2 {
+		t.Fatalf("team list: %d %s", w.Code, w.Body.String())
+	}
+	if list.Data.Items[0]["desktop_managed"] != true || list.Data.Items[1]["desktop_managed"] != nil {
+		t.Fatalf("desktop team key marking: %v", list.Data.Items)
+	}
+
+	// no route deletes or renames either desktop key, and nothing reaches the service
+	call("DELETE", "/api/token/"+fixtureKeyID, "", 403)
+	call("DELETE", "/api/token/"+teamKeyID, "", 403)
+	call("DELETE", "/api/team/team_alpha/tokens/"+teamKeyID, "", 403)
+	call("PUT", "/api/token/", `{"id":"`+fixtureKeyID+`","name":"My laptop"}`, 403)
+	call("PUT", "/api/token/", `{"id":"`+teamKeyID+`","name":"My laptop","status":1}`, 403)
+	call("PUT", "/api/team/team_alpha/tokens/"+teamKeyID, `{"name":"My laptop"}`, 403)
+	written := func() []string {
+		state.Lock()
+		defer state.Unlock()
+		return append([]string(nil), writes...)
+	}
+	if got := written(); len(got) != 0 {
+		t.Fatalf("a refused change reached the service: %v", got)
+	}
+
+	// the key form's save, with the name as it is: the personal provider lists the new groups' models
+	call("PUT", "/api/token/", `{"id":"`+fixtureKeyID+`","name":"`+tokenName+`","channel_group_ids":["m1","m2","m3"],"models":null,"allowed_ips":["10.0.0.1"],"expires_at":null,"quota":5}`, 200)
+	if p, team := counts(); p != 3 || team != 1 || live(ProviderID) != 3 {
+		t.Fatalf("after the personal edit: personal %d (live %d), team %d", p, live(ProviderID), team)
+	}
+	// the team key through the same form (the reported case), its name padded as typed
+	call("PUT", "/api/token/", `{"id":"`+teamKeyID+`","name":" `+tokenName+` ","channel_group_ids":["t1","t2"]}`, 200)
+	if p, team := counts(); p != 3 || team != 2 || live(teamProviderID("team_alpha")) != 2 {
+		t.Fatalf("after the team edit: personal %d, team %d (live %d)", p, team, live(teamProviderID("team_alpha")))
+	}
+	// how many times each key's list was asked for: a failed list is asked
+	// again at other URLs (provider.Fetch), so tests compare, never count
+	asked := func() map[string]int {
+		state.Lock()
+		defer state.Unlock()
+		out := map[string]int{}
+		for k, v := range fetches {
+			out[k] = v
+		}
+		return out
+	}
+	// switched off from the table: the save stands, the failed refresh changes nothing recorded
+	before := asked()
+	call("PUT", "/api/team/team_alpha/tokens/"+teamKeyID, `{"id":"`+teamKeyID+`","status":2}`, 200)
+	if _, team := counts(); team != 2 || asked()["sk-team"] <= before["sk-team"] {
+		t.Fatalf("switching the team key off: team %d, asked %v then %v", team, before, asked())
+	}
+	// and on again: its models come back from the service
+	call("PUT", "/api/team/team_alpha/tokens/"+teamKeyID, `{"id":"`+teamKeyID+`","status":1}`, 200)
+	if _, team := counts(); team != 2 || live(teamProviderID("team_alpha")) != 2 {
+		t.Fatalf("switching the team key on: team %d (live %d)", team, live(teamProviderID("team_alpha")))
+	}
+	// a save the service refuses refreshes nothing, and another key's change
+	// (a new name too, and a delete) moves no provider
+	before = asked()
+	call("PUT", "/api/token/", `{"id":"`+fixtureKeyID+`","status":9}`, 400)
+	call("PUT", "/api/token/", `{"id":"`+otherKeyID+`","name":"Renamed"}`, 200)
+	call("DELETE", "/api/token/"+otherKeyID, "", 200)
+	if after := asked(); len(after) != len(before) || after["sk-managed"] != before["sk-managed"] || after["sk-team"] != before["sk-team"] || after["sk-other"] != 0 {
+		t.Fatalf("a refused save or another key refetched: %v then %v", before, after)
+	}
+	if got := written(); len(got) != 7 {
+		t.Fatalf("writes: %v", got)
 	}
 }
 

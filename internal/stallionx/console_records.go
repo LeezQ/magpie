@@ -5,7 +5,12 @@ import (
 	"strings"
 )
 
-func markConsoleManagedKey(raw json.RawMessage, hash string) (json.RawMessage, error) {
+// markConsoleManagedKey marks the desktop app's own keys in a key list
+// (desktop_managed), the account's and each team payer's (desktopKeyOf), so
+// the console offers no delete and keeps their name; the BFF refuses both
+// either way (desktopKeyChange). It reads the raw list, before
+// consolePublicData masks the keys.
+func markConsoleManagedKey(raw json.RawMessage, s saved) (json.RawMessage, error) {
 	var list map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &list); err != nil {
 		return nil, err
@@ -15,7 +20,7 @@ func markConsoleManagedKey(raw json.RawMessage, hash string) (json.RawMessage, e
 		return nil, err
 	}
 	for _, item := range items {
-		if hash != "" && keyHash(rawString(item["key"])) == hash {
+		if desktopKeyOf(s, item) != "" {
 			item["desktop_managed"] = json.RawMessage("true")
 		}
 	}

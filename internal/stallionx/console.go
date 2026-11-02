@@ -19,6 +19,25 @@ import (
 type consoleSession struct {
 	account saved
 	token   string
+	// desktopKey is set when this request edits one of the desktop app's own
+	// keys, as desktopKeyOf names it ("personal" or a team's public id), once
+	// the key has been read and the change allowed (desktopKeyChange). After
+	// the edit succeeds, that key's provider fetches its models again.
+	desktopKey string
+}
+
+// refreshAfterEdit refetches the models of the desktop key this request
+// edited, if it edited one (s.desktopKey). It is called once the service has
+// accepted the edit, and is given its own time: a page closed while the save
+// answers must not leave the Providers list on the old models.
+func (s *consoleSession) refreshAfterEdit(r *http.Request) {
+	if s.desktopKey == "" || r.Method != http.MethodPut {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 30*time.Second)
+	defer cancel()
+	// refreshDesktopModels logs its own failure; the save stands either way
+	_ = refreshDesktopModels(ctx, s.account, s.desktopKey)
 }
 
 func consoleBinding(s saved) string {
@@ -178,7 +197,7 @@ func ConsoleServe(w http.ResponseWriter, r *http.Request, binding string) {
 			}
 		}
 		if err == nil && (r.URL.Path == "/api/token/" || strings.HasSuffix(r.URL.Path, "/tokens")) {
-			out, err = markConsoleManagedKey(out, s.account.KeyHash)
+			out, err = markConsoleManagedKey(out, s.account)
 		}
 		if err == nil {
 			out, err = consolePublicData(r.URL.Path, out)
@@ -215,6 +234,9 @@ func ConsoleServe(w http.ResponseWriter, r *http.Request, binding string) {
 		// creation and explicit reveal may deliver a credential to this origin.
 		out = nil
 	}
+	// an edited desktop key: its provider lists what the key gives now before
+	// the page hears the save went through
+	s.refreshAfterEdit(r)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "data": out})
 }
