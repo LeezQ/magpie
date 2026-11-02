@@ -171,6 +171,10 @@ var notYet = map[string]string{
 	"POST /api/stallionx/signin":                 "StallionX desktop login; no account CLI yet",
 	"POST /api/stallionx/signout":                "StallionX desktop logout; no account CLI yet",
 	"POST /api/stallionx/sync":                   "StallionX desktop managed-access sync; no account CLI yet",
+	"GET /api/stallionx/payers":                  "StallionX desktop payers list; no account CLI yet",
+	"POST /api/stallionx/payers/default":         "StallionX desktop default payer; no account CLI yet",
+	"POST /api/stallionx/payers/enable":          "StallionX desktop team payer setup; no account CLI yet",
+	"POST /api/stallionx/payers/remove":          "StallionX desktop team payer removal; no account CLI yet",
 	"POST /api/agent-fast":                       A,  // agent_models.go
 	"POST /api/agent-models/{id}":                A,  // agent_models.go
 	"GET /api/agents/cli":                        A,  // api.go
