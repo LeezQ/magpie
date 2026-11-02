@@ -23,7 +23,8 @@ ICO and 20/24/40px executable resources are generated from StallionX artwork
 by `build/icon/stallionx-icons.sh` and `stallionx-ico.py`.
 
 On 2026-11-02 the release branch merged 131 upstream commits, `d1a94f579` to
-`d577c184b` (a merge commit: `fork/main` is published, so it is not rebased).
+`d577c184b` (a merge commit: `fork/main` is published, so it is not rebased),
+then five more to `ce2e81da1` without conflicts.
 Two files conflicted. `release.yml` keeps the StallionX release workflow;
 upstream's only change there was about magpie-releases' notes. In
 `internal/gui/app.go` the Help menu keeps `brand.ServiceURL`, and upstream's
