@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/yetone/magpie/internal/catalog"
+	"github.com/yetone/magpie/internal/settings"
 )
 
 func TestLegacyPicksServeWhatWasPicked(t *testing.T) {
@@ -34,7 +35,7 @@ func TestLegacyPicksServeWhatWasPicked(t *testing.T) {
 	}
 	// the state of a provider saved before PickedFrom: one old pick, no
 	// PickedFrom, the list fetched since
-	dir := filepath.Join(home, ".config", "magpie")
+	dir := settings.Dir() // the folder Find reads providers.json from, under the HOME set above
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +103,7 @@ func TestLegacyPicksOfEveryModelGetPickedFromAtSave(t *testing.T) {
 	if err := catalog.SaveLive("relay", chat, ms); err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(home, ".config", "magpie")
+	dir := settings.Dir() // the folder Find reads providers.json from, under the HOME set above
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
